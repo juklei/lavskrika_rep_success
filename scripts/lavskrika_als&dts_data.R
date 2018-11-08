@@ -5,7 +5,7 @@
 ## First edit: 20171208
 ## Last edit: 20181107
 
-## Author: Julian Klein, jg.klein@protonmail.com
+## Author: Julian Klein
 
 ## Clear environment and load libraries ----------------------------------------
 
@@ -147,31 +147,34 @@ for(i in 2011:2013) {
 ## No data pixels bear the value -9999 because NA is used for water.  
 
 ## layer names needed for after loop
-names <- names(ALS_by_year$y_1998)
+names <- names(ALS_by_year[[1]])
 
-for(i in 1998:2017) {
+for(i in unique(nest_pos$years)) {
   
-  if(i < 2009) {
+  if(i < 2010) {
     
-    bol3 <- forestry@data$GRIDCODE %in% as.character((i+1):2010)
+    ## All cc and thinnings after year i until 2010 are no data
+    ## i+1 because it is the interventions in the years after i that matter
+    B3 <- forestry@data$GRIDCODE %in% as.character((i+1):2010)
     
   } else {
     
-    bol3 <- forestry@data$GRIDCODE %in% as.character(2010:i) &
-      forestry@data$action == "thinned" ## Not correct if th/cc for 2010
+    ## All thinnings after 2010 become no data
+    B3 <- forestry@data$GRIDCODE %in% as.character(2010:i) &
+          forestry@data$action == "thinned" ## Not correct if th/cc for 2010
     
   }  
   
-  if(sum(bol3) > 0) {
-    
-    masking <- gBuffer(forestry[bol3, ], width = 97, byid = TRUE) ## for focal
-    #    masking <- forestry[bol3, ]
+  if(sum(B3) > 0) {
     
     for(j in 1:length(lsl_red[1])) {
       
-      ALS_by_year[[paste0("y_", i)]][[j]] <- rasterize(
-        masking, ALS_by_year[[paste0("y_", i)]][[j]], update = TRUE, field = "value")
-      
+      ALS_by_year[[paste0("y_", i)]][[j]] <- 
+        rasterize(forestry[B3, ],
+                  ALS_by_year[[paste0("y_", i)]][[j]],
+                  update = TRUE, 
+                  field = "value")
+    
     }
     
   }
