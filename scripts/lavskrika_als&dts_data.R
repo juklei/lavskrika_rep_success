@@ -1,4 +1,4 @@
-## This script aims at importing relevant raster files derived from ALS data
+## This settlript aims at importing relevant raster files derived from ALS data
 ## create habitat metrics and calculate the distance to the closest settlement
 ## for Siberian jay territories at different radiuses around the nest.
 
@@ -18,9 +18,9 @@ library(sp)
 library(rgeos)
 library(dplyr)
 
-## Define or source functions used in this script ------------------------------
+## Define or source functions used in this settlript ------------------------------
 
-extract_by_nest <- function(x) {AALS_by_yearALS_by_year[[paste0("y_", x$year)]], x[, c("X", "Y")],
+#extract_by_nest <- function(x) {AALS_by_yearALS_by_year[[paste0("y_", x$year)]], x[, c("X", "Y")],
                  buffer = s_rad)
   all <- all[[1]]
   
@@ -48,7 +48,6 @@ extract_by_nest <- function(x) {AALS_by_yearALS_by_year[[paste0("y_", x$year)]],
   return(cbind(x, vals))
   
 }
-
 
 ## Load and explore data -------------------------------------------------------
 
@@ -91,7 +90,7 @@ ALS$area <- !(ALS[["height"]][] < 2 | is.na(ALS[["height"]][]))
 layerStats(ALS, stat = "pearson", na.rm = TRUE)
 
 ## Create a ALS data sample from all clear cuts in the study area. We use this 
-## sample from later on in the script.
+## sample from later on in the settlript.
 sample_cc <- mask(ALS, 
                   forestry[forestry@data$GRIDCODE %in% as.character(1997:2010) &
                            forestry@data$action == "cut", ])
@@ -149,7 +148,7 @@ for(i in 2011:2013) {
 ## layer names needed for after loop
 names <- names(ALS_by_year[[1]])
 
-for(i in unique(nest_pos$years)) {
+for(i in unique(nest_pos$year)) {
   
   if(i < 2010) {
     
@@ -167,7 +166,7 @@ for(i in unique(nest_pos$years)) {
   
   if(sum(B3) > 0) {
     
-    for(j in 1:length(lsl_red[1])) {
+    for(j in 1:length(ALS[1])) {
       
       ALS_by_year[[paste0("y_", i)]][[j]] <- 
         rasterize(forestry[B3, ],
@@ -185,32 +184,36 @@ for(i in unique(nest_pos$years)) {
 
 ## -----------------------------------------------------------------------------
 
-## Create and add settlement layer to the ALS_by_year -----------------------------
+## Create and add settlement layer to the ALS_by_year --------------------------
 
-## Create:
-
-sc <- read.csv("settlements.csv")
-head(sc)
-
-dta <- distanceFromPoints(lsl_base[[1]], 
-                          sc[sc$Settlement == "Arvidsjaur", 1:2])
-names(dta) <- "dta"
-
-dts_u04 <- distanceFromPoints(lsl_base[[1]], as.matrix(sc[, 1:2]))
+## Until 2004, because one settlement disappeard after 2004
+dts_u04 <- distanceFromPoints(ALS[[1]], as.matrix(settl[, 1:2]))
 names(dts_u04) <- "dts"
-#writeRaster(dts_u04, "dts_u04.tiff")
 
 dts_a04 <- distanceFromPoints(
-  lsl_base[[1]], as.matrix(sc[sc$Settlement != "Fika_until_2004", 1:2]))
+  ALS[[1]], as.matrix(settl[settl$Settlement != "Fika_until_2004", 1:2]))
 names(dts_a04) <- "dts"
-#writeRaster(dts_a04, "dts_a04.tiff")
 
-## Add:
+## Add to ALS_by_year
+ALS_by_year[paste0("y_", 1998:2004)] <- 
+  lapply(ALS_by_year[paste0("y_", 1998:2004)], 
+         FUN = function(x) stack(x, dts_u04))
+ALS_by_year[paste0("y_", 2011:2013)] <- 
+  lapply(ALS_by_year[paste0("y_", 2011:2013)], 
+         FUN = function(x) stack(x, dts_a04))
 
-ALS_by_year[paste0("y_", 1998:2017)] <- lapply(ALS_by_year[paste0("y_", 1998:2017)],
-                                            FUN = function(x) stack(x, dta))
-ALS_by_year[paste0("y_", 1998:2004)] <- lapply(ALS_by_year[paste0("y_", 1998:2004)],
-                                            FUN = function(x) stack(x, dts_u04))
-ALS_by_year[paste0("y_", 2005:2017)] <- lapply(ALS_by_year[paste0("y_", 2005:2017)], 
-                                            FUN = function(x) stack(x, dts_a04))
 ## -----------------------------------------------------------------------------
+
+## Extract ALS data from ALS_by_year for different radiuses around the nest
+
+nest <- as.data.table(nest)
+
+rad <- c(15, seq(50, 450, 50))
+
+around <- nest[, fun_all(.SD), by = 1:nrow(nest)] ## must stand first
+#at <- nest[, fun_nest(.SD), by = 1:nrow(nest)]
+
+#at$sample_rad <- paste0("rad_", s_rad)
+#at$focal_rad <- paste0("rad_", rad)
+
+around$sample_rad <- paste0("rad_", s_rad)
