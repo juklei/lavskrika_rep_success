@@ -1,4 +1,4 @@
-## This settlript aims at importing relevant raster files derived from ALS data
+## This script aims at importing relevant raster files derived from ALS data
 ## create habitat metrics and calculate the distance to the closest settlement
 ## for Siberian jay territories at different radiuses around the nest.
 
@@ -18,34 +18,32 @@ library(sp)
 library(rgeos)
 library(dplyr)
 
-## Define or source functions used in this settlript ------------------------------
+## Define or source functions used in this script ------------------------------
 
-#extract_by_nest <- function(x) {AALS_by_yearALS_by_year[[paste0("y_", x$year)]], x[, c("X", "Y")],
-                 buffer = s_rad)
-  all <- all[[1]]
+extract_around_nest <- function(x) {
   
-  # set.seed(3)
-  # rrows <- sample(length(all[, 1]), s_size) 
-  # all <- all[rrows, ]
+  all <- extract(ALS_by_year[[paste0("y_", x$year)]], 
+                 x[, c("X", "Y")], 
+                 buffer = i)
+  all <- as.data.frame(all)
+  
+  dts <- extract(ALS_by_year[[paste0("y_", x$year)]]$dts, x[, c("X", "Y")])
   
   nd_ratio <- sum(na.omit(all[, 1] == -9999))/sum(!is.na(all[, 1]))
   
   if(nd_ratio < nd_thresh) {
     
-    all[all[] == -9999] <-  NA
-    aval_dense <- sum(all[!is.na(all[, 2]), 2] > 8.8)/sum(!is.na(all[, 2]))
-    mean <- colMeans(all, na.rm = TRUE)
-    sd <- apply(all, 2, FUN = sd, na.rm = TRUE)
-    vals <- cbind(rbind(mean, sd, aval_dense), var = c("mean", "sd", "aval_dense"))
+    all[all == -9999] <-  NA
+    out <- c(colMeans(all[, - length(all)], na.rm = TRUE), "dts" = dts)
     
   } else {
     
     all[] <- NA
-    vals <- cbind(unique(all), var = "excluded")
+    out <- c(colMeans(all[, - length(all)]), "dts" = dts)
     
   }
   
-  return(cbind(x, vals))
+  return(cbind(x, t(out)))
   
 }
 
@@ -107,12 +105,12 @@ names(ALS_by_year) <- paste0("y_", c(1998:2004, 2011:2013))
 ## In the following loop we replace pixels that were cut after collection year 
 ## 2010 with random samples from clear cuts from 1997 to 2009.
 
-temp <- NULL
+T1 <- NULL
 
 for(i in 2011:2013) {
   
-  ## Store ALS data used in this loop in temp to make understanding easier
-  temp <- ALS_by_year[[paste0("y_", i)]]
+  ## Store ALS data used in this loop in T1 to make understanding easier
+  T1 <- ALS_by_year[[paste0("y_", i)]]
   
   ## Which forestry shapes were cut between collection year 2010 and year i
   B1 <- forestry@data$GRIDCODE %in% as.character(2010:i) &
@@ -122,18 +120,18 @@ for(i in 2011:2013) {
   ## random samples from clear cuts from 1997 to 2009.
   if(sum(B1) > 0) {
     
-    B2 <- !is.na(mask(temp, forestry[B1, ])[[1]][])
-    temp[B2] <- sampleRandom(sample_cc, sum(B2))
+    B2 <- !is.na(mask(T1, forestry[B1, ])[[1]][])
+    T1[B2] <- sampleRandom(sample_cc, sum(B2))
     
   } 
   
   ## Update forest are layer with new height data on modelled clear cuts
-  temp$area <- !(temp[["height"]][] < 2 | is.na(temp[["height"]][]))
+  T1$area <- !(T1[["height"]][] < 2 | is.na(T1[["height"]][]))
   
-  ## Store temp in respective place in ALS_by_year list
-  ALS_by_year[[paste0("y_", i)]] <- temp
+  ## Store T1 in respective place in ALS_by_year list
+  ALS_by_year[[paste0("y_", i)]] <- T1
   
-  temp <- NULL
+  T1 <- NULL
   
 } 
 
@@ -195,25 +193,37 @@ dts_a04 <- distanceFromPoints(
 names(dts_a04) <- "dts"
 
 ## Add to ALS_by_year
-ALS_by_year[paste0("y_", 1998:2004)] <- 
-  lapply(ALS_by_year[paste0("y_", 1998:2004)], 
+ALS_by_year[paste0("y_", 1998:2004)] <-
+  lapply(ALS_by_year[paste0("y_", 1998:2004)],
          FUN = function(x) stack(x, dts_u04))
-ALS_by_year[paste0("y_", 2011:2013)] <- 
-  lapply(ALS_by_year[paste0("y_", 2011:2013)], 
+ALS_by_year[paste0("y_", 2011:2013)] <-
+  lapply(ALS_by_year[paste0("y_", 2011:2013)],
          FUN = function(x) stack(x, dts_a04))
 
 ## -----------------------------------------------------------------------------
 
-## Extract ALS data from ALS_by_year for different radiuses around the nest
+## Extract ALS data from ALS_by_year for different radiuses around -------------
+## the nest and export.
 
-nest <- as.data.table(nest)
+nest_pos <- as.data.table(nest_pos)
 
 rad <- c(15, seq(50, 450, 50))
 
-around <- nest[, fun_all(.SD), by = 1:nrow(nest)] ## must stand first
-#at <- nest[, fun_nest(.SD), by = 1:nrow(nest)]
+## Define no data threshhold accepted (now 5% no data)
+nd_thresh <- 0.05
 
-#at$sample_rad <- paste0("rad_", s_rad)
-#at$focal_rad <- paste0("rad_", rad)
+## Extract data for all radiuses around the nest
 
-around$sample_rad <- paste0("rad_", s_rad)
+ALS_out <- NULL
+T2 <- NULL
+
+for(i in rad) {
+
+  T2 <- nest_pos[, extract_around_nest(.SD), by = 1:nrow(nest_pos)] 
+  T2$sample_rad <- paste0("rad_", i)
+
+  ALS_out <- rbind(ALS_out, T2)
+  
+}
+
+write.csv(ALS_out, "data/ALS_rep_succ.csv")
