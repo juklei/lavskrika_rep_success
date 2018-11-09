@@ -3,11 +3,11 @@
 ## for Siberian jay territories at different radiuses around the nest.
 
 ## First edit: 20171208
-## Last edit: 20181107
+## Last edit: 20181109
 
 ## Author: Julian Klein
 
-## Clear environment and load libraries ----------------------------------------
+## 1. Clear environment and load libraries -------------------------------------
 
 rm(list = ls())
 
@@ -18,7 +18,7 @@ library(sp)
 library(rgeos)
 library(dplyr)
 
-## Define or source functions used in this script ------------------------------
+## 2. Define or source functions used in this script ---------------------------
 
 ## This function extracts the mean of all data from ALS_by_year within i metres
 extract_around_nest <- function(x) {
@@ -54,7 +54,7 @@ extract_around_nest <- function(x) {
   
 }
 
-## Load and explore data -------------------------------------------------------
+## 3. Load and explore data ----------------------------------------------------
 
 dir("data")
 
@@ -66,16 +66,16 @@ settl <- read.csv("data/settlement_positions.csv")
 ALS <- merge(stack(c("data/unmanaged_ElevP95.asc",
                      "data/unmanaged_5_Perc_above.asc",
                      "data/unmanaged_0.5_Perc_above.asc")),
-              stack(c("data/managed_ElevP95.asc",
-                      "data/managed_5_Perc_above.asc",
-                      "data/managed_0.5_Perc_above.asc")))
+             stack(c("data/managed_ElevP95.asc",
+                     "data/managed_5_Perc_above.asc",
+                     "data/managed_0.5_Perc_above.asc")))
 names(ALS) <- c("height", "vd_5to", "vd_0to")
 
 ## Shape files
 study_area <- shapefile("data/120ha_buffer_study.shp")
 forestry <- shapefile("data/forestry.shp")
 
-## Process ALS data and adjust it to forestry interventions --------------------
+## 4. Process ALS data and adjust it to forestry interventions -----------------
 
 ## Calculate percentage returns between 0.5 and 5m
 ALS$vd_0to5 <- ALS$vd_0to - ALS$vd_5to
@@ -140,11 +140,11 @@ for(i in 2011:2013) {
   
 } 
 
-## Add no data (-9999) to ALS layers -------------------------------------------
-## Replace pixels with -9999 where no data exists. These pixels are forests 
-## older than a clear cut or thinnings that occured before data acquisition in 
-## 2010 as well as forests after thinnings that happened after 2010. 
-## No data pixels bear the value -9999 because NA is used for water.  
+## 5. Add no data (-9999) to ALS layers ----------------------------------------
+##    Replace pixels with -9999 where no data exists. These pixels are forests 
+##    older than a clear cut or thinnings that occured before data acquisition  
+##    in 2010 as well as forests after thinnings that happened after 2010. 
+##    No data pixels bear the value -9999 because NA is used for water.  
 
 ## layer names needed for after loop
 names <- names(ALS_by_year[[1]])
@@ -184,7 +184,7 @@ for(i in unique(nest_pos$year)) {
   
 }
 
-## Create and add settlement layer to the ALS_by_year --------------------------
+## 6. Create and add settlement layer to the ALS_by_year -----------------------
 
 ## Until 2004, because one settlement disappeard after 2004
 dts_u04 <- distanceFromPoints(ALS[[1]], as.matrix(settl[, 1:2]))
@@ -202,8 +202,8 @@ ALS_by_year[paste0("y_", 2011:2013)] <-
   lapply(ALS_by_year[paste0("y_", 2011:2013)],
          FUN = function(x) stack(x, dts_a04))
 
-## Extract ALS data from ALS_by_year for different radiuses around -------------
-## the nest and export.
+## 7. Extract ALS data from ALS_by_year for different radiuses around ----------
+##    the nest and export.
 
 nest_pos <- as.data.table(nest_pos)
 
