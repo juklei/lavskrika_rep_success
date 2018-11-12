@@ -77,8 +77,11 @@ forestry <- shapefile("data/forestry.shp")
 
 ## 4. Process ALS data and adjust it to forestry interventions -----------------
 
-## Calculate percentage returns between 0.5 and 5m
-ALS$vd_0to5 <- ALS$vd_0to - ALS$vd_5to
+## Calculate absolute percentage returns between 0.5 and 5m
+ALS$vd_0to5_abs <- ALS$vd_0to - ALS$vd_5to
+
+## Calculate relative percentage of returns between 0.5 and 5m
+ALS$vd_0to5_rel <- ((ALS$vd_0to - ALS$vd_5to)/(100-ALS$vd_5to)*100)
 
 ## Drop percentage returns above 0.5
 ALS <- ALS[[-3]]
