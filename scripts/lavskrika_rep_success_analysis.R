@@ -58,19 +58,16 @@ nest_ALS$year <- as.factor(nest_ALS$year)
 
 ## 5. Make models for different dts categorisation -----------------------------
 
-## Define categorisation distances:
-dts_cat <- seq(1000, 2000, 100)
-
 ## Reduce nest_ALS to one sample radius:
 D1 <- nest_ALS[nest_ALS$sample_rad == 15, ]
 
 ## Make loop through different categorisation distances and store results:
 
-dts_cat_res <- NULL
-for(i in D1) {
+r.dts_cat <- NULL
+for(i in seq(1000, 2000, 100)) {
 
   ## Categorise dts
-  D1$dts_cat <- ifelse(D1$dts > dts_cat[i], "low_ca", "high_ca")
+  D1$dts_cat <- ifelse(D1$dts > i, "low_ca", "high_ca")
 
   m.dts_cat <- glmer(rep_succ ~  dts_cat +
                        (1|female_ring) +
@@ -81,16 +78,6 @@ for(i in D1) {
                      data = D1,
                      control = glmerControl(optimizer = "bobyqa",
                                             optCtrl = list(maxfun = 100000)))
-  ## Test model assumptions with DHARMa:
-
-  print(i)
-
-  sim <- simulateResiduals(m.dts_cat)
-  plot(sim)
-  testUniformity(sim)
-  testZeroInflation(sim)
-  testTemporalAutocorrelation(sim)
-  testSpatialAutocorrelation(sim)
 
   ## Store model output for all categorisation distances:
   r.dts_cat <- rbind(r.dts_cat, 
@@ -100,7 +87,38 @@ for(i in D1) {
 
 }
 
+## Test model assumptions with DHARMa for chosen dts_cat:
+
+## Select dts_cat with lowest p value:
+R <- r.dts_cat[r.dts_cat[,"Pr(>|z|)"] == min(r.dts_cat[,"Pr(>|z|)"]), "dts_cat"]
+
+D1$dts_cat <- ifelse(D1$dts > R, "low_ca", "high_ca")
+
+m.dts_cat <- glmer(rep_succ ~  dts_cat +
+                     (1|female_ring) +
+                     (1|male_ring) +
+                     (1|hab_qual) +
+                     (1|year),
+                   family = binomial,  
+                   data = D1,
+                   control = glmerControl(optimizer = "bobyqa",
+                                          optCtrl = list(maxfun = 100000)))
+
+sim <- simulateResiduals(m.dts_cat)
+plot(sim)
+testUniformity(sim)
+testZeroInflation(sim)
+
 dir.create("results")
-write.csv(r.dts_cat, "result/dts_cat_results.csv")
+write.csv(r.dts_cat, "results/dts_cat_results.csv")
+
+## 6. Make the main model testing ALS on reproductive success ------------------
+
+## Categorise dts according to the results above in nest_ALS:
+nest_ALS$dts_cat <- ifelse(nest_ALS$dts > R, "low_ca", "high_ca")
+
+
+
+
 
 ## -------------------------------END-------------------------------------------
