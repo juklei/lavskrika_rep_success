@@ -38,6 +38,8 @@ test_my_model <- function(m.out) {
   print(testUniformity(sim))
   print(testZeroInflation(sim))
   print(testDispersion(sim))
+  print("Variance Inflation Factor:")
+  print(vif(m.out))
   
 }
 
@@ -82,7 +84,7 @@ for(i in seq(1000, 2000, 100)) {
   ## Categorise dts
   D1$dts_cat <- ifelse(D1$dts > i, "low_ca", "high_ca")
 
-  m.dts_cat <- glmer(rep_succ ~  dts_cat +
+  m.dts_cat <- glmer(rep_succ ~ dts_cat +
                        (1|female_ring) +
                        (1|male_ring) +
                        (1|hab_qual) +
@@ -106,7 +108,7 @@ R <- r.dts_cat[r.dts_cat[,"Pr(>|z|)"] == min(r.dts_cat[,"Pr(>|z|)"]), "dts_cat"]
 
 D1$dts_cat <- ifelse(D1$dts > R, "low_ca", "high_ca")
 
-m.dts_cat <- glmer(rep_succ ~  dts_cat +
+m.dts_cat <- glmer(rep_succ ~ dts_cat +
                      (1|female_ring) +
                      (1|male_ring) +
                      (1|hab_qual) +
@@ -128,21 +130,22 @@ nest_ALS$dts_cat <- ifelse(nest_ALS$dts > R, "low_ca", "high_ca")
 
 D15 <- nest_ALS[nest_ALS$sample_rad == 15 & !is.na(nest_ALS$height), ]
 
-## Add logarithmic function to vd_0to5
+## Add logarithmic version of vd_0to5
 D15$vd0t5_rel_log <- log(D15$vd_0to5_rel)
 D15$vd0t5_abs_log <- log(D15$vd_0to5_abs)
+D15$vd_5to_log <- log(D15$vd_5to)
 
-## Center all continuous variables to covariate correlations:
+## Center all continuous variables to avoid covariate correlations:
 D15$vd0t5_rel_log_c <- D15$vd0t5_rel_log - mean(D15$vd0t5_rel_log)
 D15$vd0t5_abs_log_c <- D15$vd0t5_abs_log - mean(D15$vd0t5_abs_log)
 D15$vd0t5_abs_c <- D15$vd_0to5_abs - mean(D15$vd_0to5_abs)
 D15$vd0t5_rel_c <- D15$vd_0to5_rel - mean(D15$vd_0to5_rel)
+D15$vd5t_log_c <- D15$vd_5to_log - mean(D15$vd_5to_log)
 D15$height_c <- D15$height - mean(D15$height)
 
-## Test log model;
+## 6a) Test log model with absolute veg density as a logarithmic predictor; 
 
-## With absolute veg density as a logarithmic predictor:
-m.vd0t5_abs_log_c <- glmer(rep_succ ~  dts_cat * vd0t5_abs_log_c + 
+m.vd0t5_abs_log_c <- glmer(rep_succ ~ dts_cat * vd0t5_abs_log_c + 
                              (1|female_ring) +
                              (1|male_ring) +
                              (1|hab_qual) +
@@ -152,17 +155,16 @@ m.vd0t5_abs_log_c <- glmer(rep_succ ~  dts_cat * vd0t5_abs_log_c +
                            data = D15,
                            control = cont_spec)
 
-## Test model assumptions:
-test_my_model(m.vd0t5_abs_log_c)
+## Store results:
+capture.output(summary(m.vd0t5_abs_log_c),
+               r.squaredGLMM(m.vd0t5_abs_log_c),
+               test_my_model(m.vd0t5_abs_log_c)) %>% 
+  write(., "results/rep_succ_vd0t5_abs_log_c.txt")
 
-## Show and store results:
-summary(m.vd0t5_abs_log_c); r.squaredGLMM(m.vd0t5_abs_log_c)
+## Store the model object for predictions for figures:
+save(m.vd0t5_abs_log_c, file = "data/m.vd0t5_abs_log_c.rda")
 
-## Store the results in the results folder:
-capture.output(summary(m.vd0t5_abs_log_c)) %>% 
-write(., "results/rep_succ_vd0t5_abs_log_c.txt")
-
-## and compare to quadratic, linear and intercep only model:
+## 6b) and compare to quadratic, linear and intercep only model; 
 
 ## Only the intercept:
 m.int <- glmer(rep_succ ~ 
@@ -175,7 +177,7 @@ m.int <- glmer(rep_succ ~
                control = cont_spec)
 
 ## Corvid activity only:
-m.dts_cat_15 <- glmer(rep_succ ~  dts_cat +
+m.dts_cat_15 <- glmer(rep_succ ~ dts_cat +
                         (1|female_ring) +
                         (1|male_ring) +
                         (1|hab_qual) +
@@ -188,7 +190,7 @@ m.dts_cat_15 <- glmer(rep_succ ~  dts_cat +
 test_my_model(m.dts_cat_15)
 
 ## With absolute veg density as a linear predictor:
-m.vd0t5_abs_c_15 <- glmer(rep_succ ~  dts_cat * vd0t5_abs_c +
+m.vd0t5_abs_c_15 <- glmer(rep_succ ~ dts_cat * vd0t5_abs_c +
                             (1|female_ring) +
                             (1|male_ring) +
                             (1|hab_qual) +
@@ -202,7 +204,7 @@ m.vd0t5_abs_c_15 <- glmer(rep_succ ~  dts_cat * vd0t5_abs_c +
 test_my_model(m.vd0t5_abs_c_15)
 
 ## With absolute veg density as a quadratic predictor:
-m.vd0t5_abs_c_poly_15 <- glmer(rep_succ ~  dts_cat * poly(vd0t5_abs_c, 2) +
+m.vd0t5_abs_c_poly_15 <- glmer(rep_succ ~ dts_cat * poly(vd0t5_abs_c, 2) +
                                  (1|female_ring) +
                                  (1|male_ring) +
                                  (1|hab_qual) +
@@ -215,6 +217,64 @@ m.vd0t5_abs_c_poly_15 <- glmer(rep_succ ~  dts_cat * poly(vd0t5_abs_c, 2) +
 ## Test model assumptions:
 test_my_model(m.vd0t5_abs_c_15)
 
+## List all models above in a model selection table and export results:
+model.sel(m.vd0t5_abs_log_c,
+          m.int, 
+          m.dts_cat_15, 
+          m.vd0t5_abs_c_15, 
+          m.vd0t5_abs_c_poly_15) %>% capture.output(.) %>% 
+  write(., "results/rep_succ_mod_sel_formula.txt")
 
+## 6c) and compare vd_0to5_rel; 
+
+m.vd0t5_rel_log_c <- glmer(rep_succ ~ dts_cat * vd0t5_rel_log_c + 
+                             (1|female_ring) +
+                             (1|male_ring) +
+                             (1|hab_qual) +
+                             (1|year) +
+                             offset(area),
+                           family = binomial,
+                           data = D15,
+                           control = cont_spec)
+
+## Test model assumptions:
+test_my_model(m.vd0t5_rel_log_c)
+
+## List both models in a model selection table and export results:
+model.sel(m.vd0t5_abs_log_c, m.vd0t5_rel_log_c) %>% capture.output(.) %>%  
+  write(., "results/rep_succ_mod_sel_vd0to5.txt")
+
+## 6d) and together with forest height in the same model:
+
+## NAs need to be removed from data set if dredge() is used
+D15_red <- na.omit(D15[, -which(colnames(D15) %in% c("eggs", "hatched"))])
+
+m.all_forest <- glmer(rep_succ ~ dts_cat * 
+                        (vd0t5_abs_log_c + height_c + vd5t_log_c) +
+                        (1|female_ring) +
+                        (1|male_ring) +
+                        (1|hab_qual) +
+                        (1|year) +
+                        offset(area),
+                      family = binomial,
+                      na.action = "na.fail", 
+                      data = D15_red,
+                      control = cont_spec)
+
+## Test model assumptions:
+test_my_model(m.all_forest)
+
+## Average all models < deltaAICc and export results:
+dredge(m.all_forest) %>% model.avg(., subset = delta <= 2) %>% summary(.) %>% 
+  capture.output(.) %>% write(., "results/rep_succ_mod_sel_forest_metrics.txt")
+  
+## 7. Test the logarithmic model with absolute density for all radiuses --------
+##    around the nest and extract AICc values. Also calculate the correlation 
+##    of the mean vd_0to5_abs of all radiuses with 15m around the nest and test 
+##    the correlation of those correlations with the AICc of the radiuses.
+
+## Reduce data set so the same nests are used for all radiuses:
+
+#...
 
 ## -------------------------------END-------------------------------------------
