@@ -23,10 +23,23 @@ library(boot)
 library(ltm)
 library(lmerTest)
 library(dplyr)
+library(car)
 
 ## 2. Define or source functions used in this script ---------------------------
 
-source()
+## Specify control values for all models in this script:
+cont_spec <- glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
+
+## Test model assumptions:
+test_my_model <- function(m.out) {
+  
+  sim <- simulateResiduals(m.out)
+  plot(sim)
+  print(testUniformity(sim))
+  print(testZeroInflation(sim))
+  print(testDispersion(sim))
+  
+}
 
 ## 3. Load and explore data ----------------------------------------------------
 
@@ -76,13 +89,12 @@ for(i in seq(1000, 2000, 100)) {
                        (1|year),
                      family = binomial,  
                      data = D1,
-                     control = glmerControl(optimizer = "bobyqa",
-                                            optCtrl = list(maxfun = 100000)))
+                     control = cont_spec)
 
   ## Store model output for all categorisation distances:
   r.dts_cat <- rbind(r.dts_cat, 
                      cbind(summary(m.dts_cat)$coefficients, 
-                           "AIC" = summary(m.dts_cat)$AIC["AIC"],
+                           "AIC" = AIC(m.dts_cat),
                            "dts_cat" = i))
 
 }
@@ -101,24 +113,101 @@ m.dts_cat <- glmer(rep_succ ~  dts_cat +
                      (1|year),
                    family = binomial,  
                    data = D1,
-                   control = glmerControl(optimizer = "bobyqa",
-                                          optCtrl = list(maxfun = 100000)))
+                   control = cont_spec)
 
-sim <- simulateResiduals(m.dts_cat)
-plot(sim)
-testUniformity(sim)
-testZeroInflation(sim)
+test_my_model(m.dts_cat)
 
 dir.create("results")
 write.csv(r.dts_cat, "results/dts_cat_results.csv")
 
-## 6. Make the main model testing ALS on reproductive success ------------------
-
 ## Categorise dts according to the results above in nest_ALS:
 nest_ALS$dts_cat <- ifelse(nest_ALS$dts > R, "low_ca", "high_ca")
 
+## 6. Make the main model testing ALS on reproductive success ------------------
+##    for 15m radius around the nest, beacuse most data for that one.
 
+D15 <- nest_ALS[nest_ALS$sample_rad == 15 & !is.na(nest_ALS$height), ]
 
+## Add logarithmic function to vd_0to5
+D15$vd0t5_rel_log <- log(D15$vd_0to5_rel)
+D15$vd0t5_abs_log <- log(D15$vd_0to5_abs)
+
+## Center all continuous variables to covariate correlations:
+D15$vd0t5_rel_log_c <- D15$vd0t5_rel_log - mean(D15$vd0t5_rel_log)
+D15$vd0t5_abs_log_c <- D15$vd0t5_abs_log - mean(D15$vd0t5_abs_log)
+D15$vd0t5_abs_c <- D15$vd_0to5_abs - mean(D15$vd_0to5_abs)
+D15$vd0t5_rel_c <- D15$vd_0to5_rel - mean(D15$vd_0to5_rel)
+D15$height_c <- D15$height - mean(D15$height)
+
+## Test log model and compare to quadratic, linear and intercep only model:
+
+## With absolute veg density as a logarithmic predictor:
+m.vd0t5_abs_log_c <- glmer(rep_succ ~  dts_cat * vd0t5_abs_log_c + 
+                             (1|female_ring) +
+                             (1|male_ring) +
+                             (1|hab_qual) +
+                             (1|year) +
+                             offset(area),
+                           family = binomial,
+                           data = D15,
+                           control = cont_spec)
+
+## Test model assumptions:
+test_my_model(m.log)
+
+## Only the intercept:
+m.int <- glmer(rep_succ ~ 
+                 (1|female_ring) +
+                 (1|male_ring) +
+                 (1|hab_qual) +
+                 (1|year),
+               family = binomial,
+               data = D15,
+               control = cont_spec)
+
+## Test model assumptions:
+test_my_model(m.int)
+
+## Corvid activity only:
+m.dts_cat_15 <- glmer(rep_succ ~  dts_cat +
+                        (1|female_ring) +
+                        (1|male_ring) +
+                        (1|hab_qual) +
+                        (1|year),
+                      family = binomial,
+                      data = D15,
+                      control = cont_spec)
+
+## Test model assumptions:
+test_my_model(m.dts_cat_15)
+
+## With absolute veg density as a linear predictor:
+m.vd0t5_abs_c_15 <- glmer(rep_succ ~  dts_cat * vd0t5_abs_c +
+                            (1|female_ring) +
+                            (1|male_ring) +
+                            (1|hab_qual) +
+                            (1|year) +
+                            offset(area),
+                          family = binomial,
+                          data = D15,
+                          control = cont_spec)
+
+## Test model assumptions:
+test_my_model(m.vd0t5_abs_c_15)
+
+## With absolute veg density as a quadratic predictor:
+m.vd0t5_abs_c_poly_15 <- glmer(rep_succ ~  dts_cat * poly(vd0t5_abs_c, 2) +
+                                 (1|female_ring) +
+                                 (1|male_ring) +
+                                 (1|hab_qual) +
+                                 (1|year) +
+                                 offset(area),
+                               family = binomial,
+                               data = D15,
+                               control = cont_spec)
+
+## Test model assumptions:
+test_my_model(m.vd0t5_abs_c_15)
 
 
 ## -------------------------------END-------------------------------------------
