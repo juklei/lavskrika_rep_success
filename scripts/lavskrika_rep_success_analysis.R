@@ -1,5 +1,10 @@
-## Describe the purpose of the script
+## In this script we want to explain the probability of succesful reproduction
+## with ALS metrics representing understorey and overstorey density as well as
+## forest height in interaction with corvid activity, which in turn is 
+## representet by the distance from settlements.
 ## 
+## We also want to test at which radius around the nest the forest composition
+## matters for reproductive success.
 
 ## First edit: 20180602
 ## Last edit: 20181113
