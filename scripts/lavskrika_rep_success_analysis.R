@@ -139,7 +139,7 @@ D15$vd0t5_abs_c <- D15$vd_0to5_abs - mean(D15$vd_0to5_abs)
 D15$vd0t5_rel_c <- D15$vd_0to5_rel - mean(D15$vd_0to5_rel)
 D15$height_c <- D15$height - mean(D15$height)
 
-## Test log model and compare to quadratic, linear and intercep only model:
+## Test log model;
 
 ## With absolute veg density as a logarithmic predictor:
 m.vd0t5_abs_log_c <- glmer(rep_succ ~  dts_cat * vd0t5_abs_log_c + 
@@ -153,7 +153,16 @@ m.vd0t5_abs_log_c <- glmer(rep_succ ~  dts_cat * vd0t5_abs_log_c +
                            control = cont_spec)
 
 ## Test model assumptions:
-test_my_model(m.log)
+test_my_model(m.vd0t5_abs_log_c)
+
+## Show and store results:
+summary(m.vd0t5_abs_log_c); r.squaredGLMM(m.vd0t5_abs_log_c)
+
+## Store the results in the results folder:
+capture.output(summary(m.vd0t5_abs_log_c)) %>% 
+write(., "results/rep_succ_vd0t5_abs_log_c.txt")
+
+## and compare to quadratic, linear and intercep only model:
 
 ## Only the intercept:
 m.int <- glmer(rep_succ ~ 
@@ -164,9 +173,6 @@ m.int <- glmer(rep_succ ~
                family = binomial,
                data = D15,
                control = cont_spec)
-
-## Test model assumptions:
-test_my_model(m.int)
 
 ## Corvid activity only:
 m.dts_cat_15 <- glmer(rep_succ ~  dts_cat +
@@ -208,6 +214,7 @@ m.vd0t5_abs_c_poly_15 <- glmer(rep_succ ~  dts_cat * poly(vd0t5_abs_c, 2) +
 
 ## Test model assumptions:
 test_my_model(m.vd0t5_abs_c_15)
+
 
 
 ## -------------------------------END-------------------------------------------
