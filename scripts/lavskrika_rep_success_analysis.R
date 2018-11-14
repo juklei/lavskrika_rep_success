@@ -57,7 +57,7 @@ nest_height <- na.omit(read.csv("data/nest_heights.csv"))
 nest <- read.csv("data/nest_reproduction.csv")
 
 head(ALS)
-head(nest_heights)
+head(nest_height)
 head(nest)
 
 ## 4. Merge and prepare data set for analysis ----------------------------------
@@ -79,7 +79,7 @@ nest_ALS$year <- as.factor(nest_ALS$year)
 ## 5. Make models for different dts categorisation -----------------------------
 
 ## Reduce nest_ALS to one sample radius:
-D1 <- nest_ALS[nest_ALS$sample_rad == 15, ]
+D <- nest_ALS[nest_ALS$sample_rad == 15, ]
 
 ## Make loop through different categorisation distances and store results:
 
@@ -87,7 +87,7 @@ r.dts_cat <- NULL
 for(i in seq(1000, 2000, 100)) {
 
   ## Categorise dts
-  D1$dts_cat <- ifelse(D1$dts > i, "low_ca", "high_ca")
+  D$dts_cat <- ifelse(D$dts > i, "low_ca", "high_ca")
 
   m.dts_cat <- glmer(rep_succ ~ dts_cat +
                        (1|female_ring) +
@@ -95,7 +95,7 @@ for(i in seq(1000, 2000, 100)) {
                        (1|hab_qual) +
                        (1|year),
                      family = binomial,  
-                     data = D1,
+                     data = D,
                      control = cont_spec)
 
   ## Store model output for all categorisation distances:
@@ -114,7 +114,7 @@ write.csv(r.dts_cat, "results/dts_cat_results.csv")
 ## Select dts_cat with lowest p value:
 R <- r.dts_cat[r.dts_cat[,"Pr(>|z|)"] == min(r.dts_cat[,"Pr(>|z|)"]), "dts_cat"]
 
-D1$dts_cat <- ifelse(D1$dts > R, "low_ca", "high_ca")
+D$dts_cat <- ifelse(D$dts > R, "low_ca", "high_ca")
 
 m.dts_cat <- glmer(rep_succ ~ dts_cat +
                      (1|female_ring) +
@@ -122,7 +122,7 @@ m.dts_cat <- glmer(rep_succ ~ dts_cat +
                      (1|hab_qual) +
                      (1|year),
                    family = binomial,  
-                   data = D1,
+                   data = D,
                    control = cont_spec)
 
 test_my_model(m.dts_cat)
@@ -130,12 +130,15 @@ test_my_model(m.dts_cat)
 ## Categorise dts according to the results above in nest_ALS:
 nest_ALS$dts_cat <- ifelse(nest_ALS$dts > R, "low_ca", "high_ca")
 
+## Exclude NA's in data set for use in models below:
+DD <- na.omit(nest_ALS[, -which(colnames(nest_ALS) %in% c("eggs", "hatched"))])
+
 ## 6. Make the main model testing ALS on reproductive success ------------------
 ##    for 15m radius around the nest, beacuse most data for that one.
 
-## Exclude NA's in data set:
-D15 <- na.omit(nest_ALS[nest_ALS$sample_rad == 15,
-                        -which(colnames(nest_ALS) %in% c("eggs", "hatched"))])
+## Reduce DD to D15
+
+D15 <- DD[DD$sample_rad == 15, ]
 
 ## Add logarithmic version of vd_0to5
 D15$vd0t5_rel_log <- log(D15$vd_0to5_rel)
@@ -287,22 +290,29 @@ dredge(m.all_forest) %>% model.avg(., subset = delta <= 2) %>% summary(.) %>%
 ##    the correlation of those correlations with the AICc of the radiuses.
 
 ## Reduce data set so the same nests are used for all radiuses:
-N1 <- nest_ALS[nest_ALS$sample_rad == 450 & !is.na(nest_ALS$height), "name"]
-D_all_rad <- nest_ALS[nest_ALS$name %in% N1, ]
+
+## Which radius has fewest nests?
+N1 <- names(sort(table(DD$sample_rad)))[1]
+
+## Which nests are those?
+N2 <- DD[DD$sample_rad == N1 & !is.na(DD$height), "name"]
+
+## Select only those nests:
+DD_all_rad <- DD[DD$name %in% N2, ]
 
 ## Add centered log(vd_0to5_abs) by radius:
-D_all_rad <- as.data.table(D_all_rad)
-D_all_rad[, "vd0t5_abs_log_c" := log(vd_0to5_abs) - mean(log(vd_0to5_abs)),
+DD_all_rad <- as.data.table(DD_all_rad)
+DD_all_rad[, "vd0t5_abs_log_c" := log(vd_0to5_abs) - mean(log(vd_0to5_abs)),
           by = "sample_rad"]
 
 ## Make a loop through all radiuses, run the log model and store results:
 
 r.all_rad <- NULL
-for(i in unique(D_all_rad$sample_rad)) {
+for(i in unique(DD_all_rad$sample_rad)) {
 
   ## Calculate correlation of vd_0to5_abs at all radiuses with 15m:
-  r.cor <- cor(D_all_rad[D_all_rad$sample_rad == i, "vd_0to5_abs"],
-               D_all_rad[D_all_rad$sample_rad == 15, "vd_0to5_abs"])
+  r.cor <- cor(DD_all_rad[DD_all_rad$sample_rad == i, "vd_0to5_abs"],
+               DD_all_rad[DD_all_rad$sample_rad == 15, "vd_0to5_abs"])
   
   m.all_rad <- glmer(rep_succ ~ dts_cat * vd0t5_abs_log_c + 
                        (1|female_ring) +
@@ -311,7 +321,7 @@ for(i in unique(D_all_rad$sample_rad)) {
                        (1|year) +
                        offset(area),
                      family = binomial,
-                     data = D_all_rad[D_all_rad$sample_rad == i, ],
+                     data = DD_all_rad[DD_all_rad$sample_rad == i, ],
                      control = cont_spec)
  
   ## Store model output for all radiuses:
