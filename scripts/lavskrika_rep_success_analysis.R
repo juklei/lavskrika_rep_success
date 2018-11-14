@@ -279,7 +279,44 @@ dredge(m.all_forest) %>% model.avg(., subset = delta <= 2) %>% summary(.) %>%
 ##    the correlation of those correlations with the AICc of the radiuses.
 
 ## Reduce data set so the same nests are used for all radiuses:
+N1 <- nest_ALS[nest_ALS$sample_rad == 450 & !is.na(nest_ALS$height), "name"]
+D_all_rad <- nest_ALS[nest_ALS$name %in% N1, ]
 
-#...
+## Add centered log(vd_0to5_abs) by radius:
+D_all_rad <- as.data.table(D_all_rad)
+D_all_rad[, "vd0t5_abs_log_c" := log(vd_0to5_abs) - mean(log(vd_0to5_abs)),
+          by = "sample_rad"]
+
+## Make a loop through all radiuses, run the log model and store results:
+
+r.all_rad <- NULL
+for(i in unique(D_all_rad$sample_rad)) {
+
+  ## Calculate correlation of vd_0to5_abs at all radiuses with 15m:
+  r.cor <- cor(D_all_rad[D_all_rad$sample_rad == i, "vd_0to5_abs"],
+               D_all_rad[D_all_rad$sample_rad == 15, "vd_0to5_abs"])
+  
+  r.AIC <- AIC(glmer(rep_succ ~ dts_cat * vd0t5_abs_log_c + 
+                       (1|female_ring) +
+                       (1|male_ring) +
+                       (1|hab_qual) +
+                       (1|year) +
+                       offset(area),
+                     family = binomial,
+                     data = D_all_rad[D_all_rad$sample_rad == i, ],
+                     control = cont_spec))
+ 
+  ## Store model output for all radiuses:
+  r.all_rad <- rbind(r.all_rad, 
+                     cbind("cor" = r.cor[1], "AIC" = r.AIC, "radius" = i))
+  
+}
+
+## Add deltaAIC to results:
+r.all_rad <- as.data.frame(r.all_rad)
+r.all_rad$delta <- r.all_rad$AIC - min(r.all_rad$AIC)
+
+## Export r.all_rad to data for use making figures:
+write.csv(r.all_rad, "data/r.all_rad.csv", row.names = FALSE)
 
 ## -------------------------------END-------------------------------------------
