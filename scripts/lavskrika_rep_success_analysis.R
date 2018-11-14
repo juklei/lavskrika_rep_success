@@ -133,7 +133,9 @@ nest_ALS$dts_cat <- ifelse(nest_ALS$dts > R, "low_ca", "high_ca")
 ## 6. Make the main model testing ALS on reproductive success ------------------
 ##    for 15m radius around the nest, beacuse most data for that one.
 
-D15 <- nest_ALS[nest_ALS$sample_rad == 15 & !is.na(nest_ALS$height), ]
+## Exclude NA's in data set:
+D15 <- na.omit(nest_ALS[nest_ALS$sample_rad == 15,
+                        -which(colnames(nest_ALS) %in% c("eggs", "hatched"))])
 
 ## Add logarithmic version of vd_0to5
 D15$vd0t5_rel_log <- log(D15$vd_0to5_rel)
@@ -162,12 +164,21 @@ m.vd0t5_abs_log_c <- glmer(rep_succ ~ dts_cat * vd0t5_abs_log_c +
 
 ## Store results:
 capture.output(summary(m.vd0t5_abs_log_c),
+               confint.merMod(m.vd0t5_abs_log_c),
                r.squaredGLMM(m.vd0t5_abs_log_c),
                test_my_model(m.vd0t5_abs_log_c)) %>% 
   write(., "results/rep_succ_vd0t5_abs_log_c.txt")
 
-## Store the model object for predictions for figures:
+## Store the model object for predictions:
 save(m.vd0t5_abs_log_c, file = "data/m.vd0t5_abs_log_c.rda")
+
+## Export data set with prediction for figures to data:
+cbind(predict(m.vd0t5_abs_log_c, 
+              re.form = NA, 
+              se.fit = TRUE, 
+              type = "response"), 
+      D15[, c("rep_succ", "dts_cat", "vd_0to5_abs")]) %>% 
+  write.csv(., "data/p.vd0t5_abs_log_c.csv", row.names = FALSE)
 
 ## 6b) and compare to quadratic, linear and intercep only model; 
 
@@ -251,9 +262,6 @@ model.sel(m.vd0t5_abs_log_c, m.vd0t5_rel_log_c) %>% capture.output(.) %>%
 
 ## 6d) and together with forest height in the same model:
 
-## NAs need to be removed from data set if dredge() is used
-D15_red <- na.omit(D15[, -which(colnames(D15) %in% c("eggs", "hatched"))])
-
 m.all_forest <- glmer(rep_succ ~ dts_cat * 
                         (vd0t5_abs_log_c + height_c + vd5t_log_c) +
                         (1|female_ring) +
@@ -263,7 +271,7 @@ m.all_forest <- glmer(rep_succ ~ dts_cat *
                         offset(area),
                       family = binomial,
                       na.action = "na.fail", 
-                      data = D15_red,
+                      data = D15,
                       control = cont_spec)
 
 ## Test model assumptions:
