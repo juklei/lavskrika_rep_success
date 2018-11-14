@@ -106,6 +106,9 @@ for(i in seq(1000, 2000, 100)) {
 
 }
 
+dir.create("results")
+write.csv(r.dts_cat, "results/dts_cat_results.csv")
+
 ## Test model assumptions with DHARMa for chosen dts_cat:
 
 ## Select dts_cat with lowest p value:
@@ -123,9 +126,6 @@ m.dts_cat <- glmer(rep_succ ~ dts_cat +
                    control = cont_spec)
 
 test_my_model(m.dts_cat)
-
-dir.create("results")
-write.csv(r.dts_cat, "results/dts_cat_results.csv")
 
 ## Categorise dts according to the results above in nest_ALS:
 nest_ALS$dts_cat <- ifelse(nest_ALS$dts > R, "low_ca", "high_ca")
@@ -304,7 +304,7 @@ for(i in unique(D_all_rad$sample_rad)) {
   r.cor <- cor(D_all_rad[D_all_rad$sample_rad == i, "vd_0to5_abs"],
                D_all_rad[D_all_rad$sample_rad == 15, "vd_0to5_abs"])
   
-  r.AIC <- AIC(glmer(rep_succ ~ dts_cat * vd0t5_abs_log_c + 
+  m.all_rad <- glmer(rep_succ ~ dts_cat * vd0t5_abs_log_c + 
                        (1|female_ring) +
                        (1|male_ring) +
                        (1|hab_qual) +
@@ -312,11 +312,14 @@ for(i in unique(D_all_rad$sample_rad)) {
                        offset(area),
                      family = binomial,
                      data = D_all_rad[D_all_rad$sample_rad == i, ],
-                     control = cont_spec))
+                     control = cont_spec)
  
   ## Store model output for all radiuses:
   r.all_rad <- rbind(r.all_rad, 
-                     cbind("cor" = r.cor[1], "AIC" = r.AIC, "radius" = i))
+                     cbind("p.value" = summary(m.all_rad)$coefficients[4, 4],
+                           "cor" = r.cor[1],
+                           "AIC" = AIC(m.all_rad), 
+                           "radius" = i))
   
 }
 
@@ -324,7 +327,8 @@ for(i in unique(D_all_rad$sample_rad)) {
 r.all_rad <- as.data.frame(r.all_rad)
 r.all_rad$delta <- r.all_rad$AIC - min(r.all_rad$AIC)
 
-## Export r.all_rad to data for use making figures:
-write.csv(r.all_rad, "data/r.all_rad.csv", row.names = FALSE)
+## Export r.all_rad to results and data for making figures:
+write.csv(r.all_rad, "results/all_rad_results.csv", row.names = FALSE)
+write.csv(r.all_rad, "data/all_rad_results.csv", row.names = FALSE)
 
 ## -------------------------------END-------------------------------------------
