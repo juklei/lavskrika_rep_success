@@ -16,7 +16,7 @@ library(dplyr)
 
 ## 2. Define or source functions used in this script ---------------------------
 
-source()
+#source()
 
 ## 3. Load and explore data ----------------------------------------------------
 
@@ -38,51 +38,73 @@ p1 <- ggplot(D_fig1, aes(x = vd_0to5_abs,
                          color = dts_cat))
 p2 <- geom_jitter(size = 4, na.rm = TRUE, width = 0, height = 0.01)
 p3 <- geom_line(aes(x = vd_0to5_abs, y = fit, lty = dts_cat), size = 3)
-p4 <- geom_ribbon(aes(ymin = fit - (1.96*se.fit), ymax = fit + (1.96*se.fit)),
-#                  colour = NA, 
-                  alpha = 0.2)
+p4 <- geom_ribbon(aes(ymin = pmax(fit - (1.96*se.fit), 0), 
+                      ymax = pmin(fit + (1.96*se.fit), 1)),
+                  colour = NA, 
+                  alpha = 0.1)
+
+## Store figures:
+
+dir.create("figures")
+
+png("figures/lavskrika_F1.png", 10000, 7000, "px", res = 600)
 
 p1 + p2 + p3 + p4 +
-  scale_color_grey(start = 0.1, end = 0.6) + 
-  scale_fill_grey(start = 0.1, end = 0.6) +
+  scale_color_grey(start = 0.1, end = 0.5) + 
+  scale_fill_grey(start = 0.1, end = 0.5) +
   ylab("probability of succesful reproduction") + 
   xlab("understorey density") + 
-  theme_classic(45) +                  
-  theme(legend.position = c(0.8, 0.1), 
+  theme_classic(40) +                  
+  theme(legend.position = c(0.8, 0.2), 
         legend.title = element_blank(),
         legend.key.size = unit(3, 'lines'))
+
+dev.off()
 
 ## 5. Produce Figure 2 showing the relationship between vegetation -------------
 ##    correlation and AIC values for all areas around the nest the 15m radius 
 
-x <- read.csv("rad_P.csv")
+## Add actual area (ha) to data set:
+D_fig2$area <- round(D_fig2$radius^2*pi/10000, digits = 1)
 
-c1 <- ggplot(x, aes(x = radius))
-c2 <- geom_line(size = 2, aes(y = estimate, colour = "estimate"))
-c2b <- geom_ribbon(aes(ymin = estimate - std_error, 
-                       ymax = estimate + std_error,
-                       colour = "estimate"), 
-                   alpha = 0.1)
-c2c <- geom_point(size = 5, aes(y = estimate, colour = "estimate"))
-c3 <- geom_line(size = 2, 
-                linetype = "dashed", 
-                aes(y = ((p.value*10)-2.5), colour = "p.value"))
-c3b <- geom_point(size = 5, aes(y = ((p.value*10)-2.5), colour = "p.value"))
-c4 <- scale_y_continuous(
-  sec.axis = sec_axis(~(.+2.5)/10, 
-                      name = "p.value of the interaction"))
-c5 <- geom_hline(yintercept = (0.05*10)-2.5, linetype = "dashed", color = "grey")
+## Calculate cor values used for vertical lines below:
+vert_lin <- D_fig2$cor[D_fig2$area %in% c(2, 20, 60.3)]
 
-c1 + c2 + c2c + c3 + c3b + c4 + c5 + 
-  scale_color_grey() + 
-  scale_fill_grey() +
-  xlab("radius(m) around the nest") + 
-  ylab("effect size of the interaction") + 
+c1 <- ggplot(D_fig2, aes(x = cor))
+c2a <- geom_line(size = 2,
+                 linetype = "dashed",
+                 aes(y = pvalue, colour = "pvalue"))
+#c2b <- geom_point(size = 1, aes(y = pvalue, colour = "pvalue"))
+c3a <- geom_line(size = 2, 
+                linetype = "dotted", 
+                aes(y = deltaAIC/10, colour = "deltaAIC"))
+#c3b <- geom_point(size = 1, aes(y = deltaAIC/10, colour = "deltaAIC"))
+c4 <- scale_y_continuous(sec.axis = sec_axis(~.*10, name = "delta AIC"))
+c5 <- scale_x_reverse()
+c6a <- geom_vline(xintercept = vert_lin, color = "black", linetype = "dashed") 
+c6b <- geom_text(aes(x = vert_lin[2] + 0.01, label = "2 ha", y = 0.5), 
+                 angle = 90,
+                 size = 10)
+c6c <- geom_text(aes(x = vert_lin[3] + 0.01, label = "20 ha", y = 0.5), 
+                 angle = 90,
+                 size = 10)
+c6d <- geom_text(aes(x = vert_lin[1] + 0.01, label = "60 ha", y = 0.5), 
+                 angle = 90,
+                 size = 10)
+
+png("figures/lavskrika_F2.png", 10000, 6000, "px", res = 600)
+
+c1 + c6a + c2a + c3a + c4 + c5 + c6b + c6c + c6d +
+  scale_color_grey(start = 0.1, end = 0.5) + 
+  scale_fill_grey(start = 0.1, end = 0.5) +
+  xlab("correlation between area around the nest and nest") + 
+  ylab("pvalue") + 
   theme_classic(40) +                  
-  theme(legend.position = c(0.2, 0.8), 
+  theme(legend.position = c(0.15, 0.9), 
         legend.title = element_blank(),
         legend.key.size = unit(2.5, 'lines'))
 
+dev.off()
 
 ## 6. Produce Figure 3 showing the nest site selection -------------------------
 

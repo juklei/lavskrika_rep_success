@@ -7,7 +7,7 @@
 ## matters for reproductive success.
 
 ## First edit: 20180602
-## Last edit: 20181113
+## Last edit: 20181115
 
 ## Author: Julian Klein
 
@@ -76,7 +76,8 @@ nest_ALS$female_ring <- as.factor(nest_ALS$female_ring)
 nest_ALS$male_ring <- as.factor(nest_ALS$male_ring)
 nest_ALS$year <- as.factor(nest_ALS$year)
 
-## 5. Make models for different dts categorisation -----------------------------
+## 5. Make models for different dts categorisation and categorise --------------
+##    dts according to result 
 
 ## Reduce nest_ALS to one sample radius:
 D <- nest_ALS[nest_ALS$sample_rad == 15, ]
@@ -155,7 +156,7 @@ D15$height_c <- D15$height - mean(D15$height)
 
 ## 6a) Test log model with absolute veg density as a logarithmic predictor; 
 
-m.vd0t5_abs_log_c_15 <- glmer(rep_succ ~ dts_cat * vd0t5_abs_log_c + area +
+m.vd0t5_abs_log_c_15 <- glmer(rep_succ ~ dts_cat * vd0t5_abs_log_c +
                                 (1|female_ring) +
                                 (1|male_ring) +
                                 (1|hab_qual) +
@@ -208,7 +209,7 @@ m.dts_cat_15 <- glmer(rep_succ ~ dts_cat +
 test_my_model(m.dts_cat_15)
 
 ## With absolute veg density as a linear predictor:
-m.vd0t5_abs_c_15 <- glmer(rep_succ ~ dts_cat * vd0t5_abs_c + area +
+m.vd0t5_abs_c_15 <- glmer(rep_succ ~ dts_cat * vd0t5_abs_c +
                             (1|female_ring) +
                             (1|male_ring) +
                             (1|hab_qual) +
@@ -221,8 +222,7 @@ m.vd0t5_abs_c_15 <- glmer(rep_succ ~ dts_cat * vd0t5_abs_c + area +
 test_my_model(m.vd0t5_abs_c_15)
 
 ## With absolute veg density as a quadratic predictor:
-m.vd0t5_abs_c_poly_15 <- glmer(rep_succ ~ dts_cat * poly(vd0t5_abs_c, 2) + 
-                                 area +
+m.vd0t5_abs_c_poly_15 <- glmer(rep_succ ~ dts_cat * poly(vd0t5_abs_c, 2) +
                                  (1|female_ring) +
                                  (1|male_ring) +
                                  (1|hab_qual) +
@@ -244,7 +244,7 @@ model.sel(m.vd0t5_abs_log_c_15,
 
 ## 6c) and compare vd_0to5_rel; 
 
-m.vd0t5_rel_log_c <- glmer(rep_succ ~ dts_cat * vd0t5_rel_log_c + area +
+m.vd0t5_rel_log_c <- glmer(rep_succ ~ dts_cat * vd0t5_rel_log_c +
                              (1|female_ring) +
                              (1|male_ring) +
                              (1|hab_qual) +
@@ -263,7 +263,7 @@ model.sel(m.vd0t5_abs_log_c_15, m.vd0t5_rel_log_c) %>% capture.output(.) %>%
 ## 6d) and together with forest height in the same model:
 
 m.all_forest <- glmer(rep_succ ~ dts_cat * 
-                        (vd0t5_abs_log_c + height_c + vd5t_log_c) + area +
+                        (vd0t5_abs_log_c + height_c + vd5t_log_c) +
                         (1|female_ring) +
                         (1|male_ring) +
                         (1|hab_qual) +
@@ -321,7 +321,7 @@ for(i in unique(DD_all_rad$sample_rad)) {
  
   ## Store model output for all radiuses:
   r.all_rad <- rbind(r.all_rad, 
-                     cbind("p.value" = summary(m.all_rad)$coefficients[4, 4],
+                     cbind("pvalue" = summary(m.all_rad)$coefficients[5, 4],
                            "cor" = r.cor[1],
                            "AIC" = AIC(m.all_rad), 
                            "radius" = i))
@@ -330,7 +330,7 @@ for(i in unique(DD_all_rad$sample_rad)) {
 
 ## Add deltaAIC to results:
 r.all_rad <- as.data.frame(r.all_rad)
-r.all_rad$delta <- r.all_rad$AIC - min(r.all_rad$AIC)
+r.all_rad$deltaAIC <- r.all_rad$AIC - min(r.all_rad$AIC)
 
 ## Export r.all_rad to results and data for making figures:
 write.csv(r.all_rad, "results/all_rad_results.csv", row.names = FALSE)
