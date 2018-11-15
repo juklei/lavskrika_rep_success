@@ -155,28 +155,27 @@ D15$height_c <- D15$height - mean(D15$height)
 
 ## 6a) Test log model with absolute veg density as a logarithmic predictor; 
 
-m.vd0t5_abs_log_c <- glmer(rep_succ ~ dts_cat * vd0t5_abs_log_c + 
-                             (1|female_ring) +
-                             (1|male_ring) +
-                             (1|hab_qual) +
-                             (1|year) +
-                             offset(area),
-                           family = binomial,
-                           data = D15,
-                           control = cont_spec)
+m.vd0t5_abs_log_c_15 <- glmer(rep_succ ~ dts_cat * vd0t5_abs_log_c + area +
+                                (1|female_ring) +
+                                (1|male_ring) +
+                                (1|hab_qual) +
+                                (1|year),
+                              family = binomial,
+                              data = D15,
+                              control = cont_spec)
 
 ## Store results:
-capture.output(summary(m.vd0t5_abs_log_c),
-               confint.merMod(m.vd0t5_abs_log_c),
-               r.squaredGLMM(m.vd0t5_abs_log_c),
-               test_my_model(m.vd0t5_abs_log_c)) %>% 
+capture.output(summary(m.vd0t5_abs_log_c_15),
+               confint.merMod(m.vd0t5_abs_log_c_15),
+               r.squaredGLMM(m.vd0t5_abs_log_c_15),
+               test_my_model(m.vd0t5_abs_log_c_15)) %>% 
   write(., "results/rep_succ_vd0t5_abs_log_c.txt")
 
 ## Store the model object for predictions:
-save(m.vd0t5_abs_log_c, file = "data/m.vd0t5_abs_log_c.rda")
+save(m.vd0t5_abs_log_c_15, file = "data/m.vd0t5_abs_log_c_15.rda")
 
 ## Export data set with prediction for figures to data:
-cbind(predict(m.vd0t5_abs_log_c, 
+cbind(predict(m.vd0t5_abs_log_c_15, 
               re.form = NA, 
               se.fit = TRUE, 
               type = "response"), 
@@ -209,12 +208,11 @@ m.dts_cat_15 <- glmer(rep_succ ~ dts_cat +
 test_my_model(m.dts_cat_15)
 
 ## With absolute veg density as a linear predictor:
-m.vd0t5_abs_c_15 <- glmer(rep_succ ~ dts_cat * vd0t5_abs_c +
+m.vd0t5_abs_c_15 <- glmer(rep_succ ~ dts_cat * vd0t5_abs_c + area +
                             (1|female_ring) +
                             (1|male_ring) +
                             (1|hab_qual) +
-                            (1|year) +
-                            offset(area),
+                            (1|year),
                           family = binomial,
                           data = D15,
                           control = cont_spec)
@@ -223,12 +221,12 @@ m.vd0t5_abs_c_15 <- glmer(rep_succ ~ dts_cat * vd0t5_abs_c +
 test_my_model(m.vd0t5_abs_c_15)
 
 ## With absolute veg density as a quadratic predictor:
-m.vd0t5_abs_c_poly_15 <- glmer(rep_succ ~ dts_cat * poly(vd0t5_abs_c, 2) +
+m.vd0t5_abs_c_poly_15 <- glmer(rep_succ ~ dts_cat * poly(vd0t5_abs_c, 2) + 
+                                 area +
                                  (1|female_ring) +
                                  (1|male_ring) +
                                  (1|hab_qual) +
-                                 (1|year) +
-                                 offset(area),
+                                 (1|year),
                                family = binomial,
                                data = D15,
                                control = cont_spec)
@@ -237,7 +235,7 @@ m.vd0t5_abs_c_poly_15 <- glmer(rep_succ ~ dts_cat * poly(vd0t5_abs_c, 2) +
 test_my_model(m.vd0t5_abs_c_15)
 
 ## List all models above in a model selection table and export results:
-model.sel(m.vd0t5_abs_log_c,
+model.sel(m.vd0t5_abs_log_c_15,
           m.int, 
           m.dts_cat_15, 
           m.vd0t5_abs_c_15, 
@@ -246,12 +244,11 @@ model.sel(m.vd0t5_abs_log_c,
 
 ## 6c) and compare vd_0to5_rel; 
 
-m.vd0t5_rel_log_c <- glmer(rep_succ ~ dts_cat * vd0t5_rel_log_c + 
+m.vd0t5_rel_log_c <- glmer(rep_succ ~ dts_cat * vd0t5_rel_log_c + area +
                              (1|female_ring) +
                              (1|male_ring) +
                              (1|hab_qual) +
-                             (1|year) +
-                             offset(area),
+                             (1|year),
                            family = binomial,
                            data = D15,
                            control = cont_spec)
@@ -260,18 +257,17 @@ m.vd0t5_rel_log_c <- glmer(rep_succ ~ dts_cat * vd0t5_rel_log_c +
 test_my_model(m.vd0t5_rel_log_c)
 
 ## List both models in a model selection table and export results:
-model.sel(m.vd0t5_abs_log_c, m.vd0t5_rel_log_c) %>% capture.output(.) %>%  
+model.sel(m.vd0t5_abs_log_c_15, m.vd0t5_rel_log_c) %>% capture.output(.) %>%  
   write(., "results/rep_succ_mod_sel_vd0to5.txt")
 
 ## 6d) and together with forest height in the same model:
 
 m.all_forest <- glmer(rep_succ ~ dts_cat * 
-                        (vd0t5_abs_log_c + height_c + vd5t_log_c) +
+                        (vd0t5_abs_log_c + height_c + vd5t_log_c) + area +
                         (1|female_ring) +
                         (1|male_ring) +
                         (1|hab_qual) +
-                        (1|year) +
-                        offset(area),
+                        (1|year),
                       family = binomial,
                       na.action = "na.fail", 
                       data = D15,
@@ -314,12 +310,11 @@ for(i in unique(DD_all_rad$sample_rad)) {
   r.cor <- cor(DD_all_rad[DD_all_rad$sample_rad == i, "vd_0to5_abs"],
                DD_all_rad[DD_all_rad$sample_rad == 15, "vd_0to5_abs"])
   
-  m.all_rad <- glmer(rep_succ ~ dts_cat * vd0t5_abs_log_c + 
+  m.all_rad <- glmer(rep_succ ~ dts_cat * vd0t5_abs_log_c + area +
                        (1|female_ring) +
                        (1|male_ring) +
                        (1|hab_qual) +
-                       (1|year) +
-                       offset(area),
+                       (1|year),
                      family = binomial,
                      data = DD_all_rad[DD_all_rad$sample_rad == i, ],
                      control = cont_spec)
