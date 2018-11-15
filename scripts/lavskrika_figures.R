@@ -23,9 +23,10 @@ library(dplyr)
 dir("data")
 D_fig1 <- read.csv("data/p.vd0t5_abs_log_c.csv")
 D_fig2 <- read.csv("data/all_rad_results.csv")
-#D_fig3 <- read.csv("data/")
+D_fig3 <- read.csv("data/p.nest_pos.csv")
 head(D_fig1)
 head(D_fig2)
+head(D_fig3)
 
 ## 4. Produce Figure 1 showing the main results for the 15m radius -------------
 
@@ -71,11 +72,11 @@ D_fig2$area <- round(D_fig2$radius^2*pi/10000, digits = 1)
 vert_lin <- D_fig2$cor[D_fig2$area %in% c(2, 20, 60.3)]
 
 c1 <- ggplot(D_fig2, aes(x = cor))
-c2a <- geom_line(size = 2,
+c2a <- geom_line(size = 3,
                  linetype = "dashed",
                  aes(y = pvalue, colour = "pvalue"))
 #c2b <- geom_point(size = 1, aes(y = pvalue, colour = "pvalue"))
-c3a <- geom_line(size = 2, 
+c3a <- geom_line(size = 3, 
                 linetype = "dotted", 
                 aes(y = deltaAIC/10, colour = "deltaAIC"))
 #c3b <- geom_point(size = 1, aes(y = deltaAIC/10, colour = "deltaAIC"))
@@ -108,31 +109,37 @@ dev.off()
 
 ## 6. Produce Figure 3 showing the nest site selection -------------------------
 
-p1 <- ggplot(data = prd_diff, aes(x = dts, 
-                                  y = vd_0to5_diff, 
-                                  fill = terr_cat,
-                                  colour = terr_cat))
-p2 <- geom_point(size = 4, na.rm = TRUE, alpha = 0.8)
-p2b <- geom_jitter(size = 4, na.rm = TRUE, width = 0, height = 0.01)
-p3 <- geom_line(aes(x = dts, y = prd_diff, lty = terr_cat), size = 3)
-p4 <- geom_ribbon(aes(ymin = prd_diff - se.fit, 
-                      ymax = prd_diff + se.fit),
-                  colour = NA, 
-                  alpha = 0.2)
-p5 <- geom_vline(xintercept = 1500, color = "black", linetype = "dashed")
-p6 <- geom_hline(yintercept = 0, color = "black", linetype = "dashed")
-# p7 <- geom_abline(intercept = 0, slope = 1, linetype = "dashed")
-# p8 <- scale_y_continuous(limits = c(0, 25))
+## Change dts_cat level names:
+levels(D_fig3$dts_cat) <- c("high corvid activity", "low corvid activity") 
 
-p1 + p5 + p6 + p2 + p3 + p4 +
-  scale_color_grey() + 
-  scale_fill_grey() +
-  ylab("relative understorey density") + 
-  xlab("distance(m) to closest settlement") + 
-  theme_classic(45) +                  
-  theme(legend.position = c(0.75, 0.1), 
+q1 <- ggplot(D_fig3, aes(x = vd_0to5_abs.y, 
+                         y = vd_diff, 
+                         fill = dts_cat, 
+                         color = dts_cat))
+q2 <- geom_point(size = 4, na.rm = TRUE)
+q3 <- geom_line(aes(x = vd_0to5_abs.y, y = fit, lty = dts_cat), size = 3)
+q4 <- geom_ribbon(aes(ymin = fit - (1.96*se.fit), 
+                      ymax = fit + (1.96*se.fit)),
+                  colour = NA, 
+                  alpha = 0.1)
+
+## Store figures:
+
+dir.create("figures")
+
+png("figures/lavskrika_F3.png", 10000, 7000, "px", res = 600)
+
+q1 + q2 + q3 + q4 +
+  scale_color_grey(start = 0.1, end = 0.5) + 
+  scale_fill_grey(start = 0.1, end = 0.5) +
+  ylab("realtive understorey density nest") + 
+  xlab("understorey density territory") + 
+  theme_classic(40) +                  
+  theme(legend.position = c(0.8, 0.2), 
         legend.title = element_blank(),
         legend.key.size = unit(3, 'lines'))
+
+dev.off()
 
 
 ## -----------------------------------------------------------------------------

@@ -15,9 +15,7 @@
 
 rm(list = ls())
 
-library(ggplot2)
 library(data.table)
-library(reshape2)
 library(nlme)
 library(lme4)
 library(MuMIn)
@@ -26,7 +24,6 @@ library(DHARMa)
 library(pscl)
 library(boot)
 library(ltm)
-library(lmerTest)
 library(dplyr)
 library(car)
 
