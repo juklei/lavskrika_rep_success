@@ -24,6 +24,7 @@ library(ltm)
 library(lmerTest)
 library(car)
 library(dplyr)
+library(MuMIn)
 
 ## Define or source functions used in this script ------------------------------
 
@@ -70,10 +71,10 @@ np_ALS$female_ring <- as.factor(np_ALS$female_ring)
 np_ALS$male_ring <- as.factor(np_ALS$male_ring)
 np_ALS$year <- as.factor(np_ALS$year)
 
+## 5. Make a model, export results and make predictions for figures ------------
+
 ## Center vd_0to5_abs.y:
 np_ALS$vd_terr_cont_cent <- np_ALS$vd_0to5_abs.y - mean(np_ALS$vd_0to5_abs.y)
-
-## 5. Make a model, export results and make predictions for figures:
 
 m.nest_pos <- lmer(vd_diff ~  vd_terr_cont_cent * dts_cat +
                 (1|male_ring) +
@@ -88,7 +89,7 @@ qqnorm(summary(m.nest_pos)$residuals); qqline(summary(m.nest_pos)$residuals)
 ## Store results:
 capture.output(summary(m.nest_pos),
                r.squaredGLMM(m.nest_pos),
-               "vif:" =vif(m.nest_pos)) %>% 
+               "vif:" = vif(m.nest_pos)) %>% 
   write(., "results/nest_pos_terr_cont.txt")
 
 ## Export data set with prediction for figures to data:

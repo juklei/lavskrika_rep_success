@@ -77,7 +77,7 @@ c2a <- geom_line(size = 3,
                  aes(y = pvalue, colour = "pvalue"))
 #c2b <- geom_point(size = 1, aes(y = pvalue, colour = "pvalue"))
 c3a <- geom_line(size = 3, 
-                linetype = "dotted", 
+                 linetype = "dotted",
                 aes(y = deltaAIC/10, colour = "deltaAIC"))
 #c3b <- geom_point(size = 1, aes(y = deltaAIC/10, colour = "deltaAIC"))
 c4 <- scale_y_continuous(sec.axis = sec_axis(~.*10, name = "delta AIC"))
