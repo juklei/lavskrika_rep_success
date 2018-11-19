@@ -125,14 +125,14 @@ m.dts_cat <- glmer(rep_succ ~ dts_cat +
 
 test_my_model(m.dts_cat)
 
+## 6. Make the main model testing ALS on reproductive success ------------------
+##    for 15m radius around the nest, beacuse most data for that one.
+
 ## Categorise dts according to the results above in nest_ALS:
 nest_ALS$dts_cat <- ifelse(nest_ALS$dts > R, "low_ca", "high_ca")
 
 ## Exclude NA's in data set for use in models below:
 DD <- na.omit(nest_ALS[, -which(colnames(nest_ALS) %in% c("eggs", "hatched"))])
-
-## 6. Make the main model testing ALS on reproductive success ------------------
-##    for 15m radius around the nest, beacuse most data for that one.
 
 ## Reduce DD to D15
 
@@ -277,7 +277,63 @@ test_my_model(m.all_forest)
 dredge(m.all_forest) %>% model.avg(., subset = delta <= 2) %>% summary(.) %>% 
   capture.output(.) %>% write(., "results/rep_succ_mod_sel_forest_metrics.txt")
   
-## 7. Test the logarithmic model with absolute density for all radiuses --------
+## 7. Assess if a natural threshold can be identified for high corvid ----------
+##    activity. For this we classify vd_to5_abs into two categories in steps 
+##    low to high density and test the effect on rep_success. The threshold 
+##    value is the were the effect size ist highest. 
+
+## We want to do this only for high corvid activity because no threshold value
+## is expected in low corvid activity:
+
+DD_t <- D15[D15$dts_cat == "low_ca", ]
+
+r.rep_succ_t <- NULL
+for(i in seq(7, 18, 0.1)) {
+  
+  ## Categorise vd_0to5_abs
+  DD_t$vd_cat <- ifelse(DD_t$vd_0to5_abs > i, "dense", "open")
+  
+  m.rep_succ_t <- glmer(rep_succ ~ vd_cat +
+                          (1|female_ring) +
+                          (1|male_ring) +
+                          (1|hab_qual) +
+                          (1|year),
+                        family = binomial,  
+                        data = DD_t,
+                        control = cont_spec)
+  
+  ## Store model output for all categorisation distances:
+  r.rep_succ_t <- rbind(r.rep_succ_t, 
+                             cbind(summary(m.rep_succ_t)$coefficients, 
+                                   "AIC" = AIC(m.rep_succ_t),
+                                   "vd_cat" = i))
+  
+}
+
+dir.create("results")
+write.csv(r.rep_succ_t, "results/vd_cat_results.csv")
+
+## Test model assumptions with DHARMa for chosen vd_cat:
+
+## Select vd_cat with highest Estimate:
+S <- r.rep_succ_t[r.rep_succ_t[, "Estimate"] == max(r.rep_succ_t[, "Estimate"]),
+                  "vd_cat"]
+
+## Categorise vd_0to5_abs
+DD_t$vd_cat <- ifelse(DD_t$vd_0to5_abs > S, "dense", "open")
+
+m.rep_succ_t <- glmer(rep_succ ~ vd_cat +
+                        (1|female_ring) +
+                        (1|male_ring) +
+                        (1|hab_qual) +
+                        (1|year),
+                      family = binomial,  
+                      data = DD_t,
+                      control = cont_spec)
+
+test_my_model(m.rep_succ_t)
+
+## 8. Test the logarithmic model with absolute density for all radiuses --------
 ##    around the nest and extract AICc values. Also calculate the correlation 
 ##    of the mean vd_0to5_abs of all radiuses with 15m around the nest and test 
 ##    the correlation of those correlations with the AICc of the radiuses.
