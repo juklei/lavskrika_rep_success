@@ -79,7 +79,11 @@ c2a <- geom_line(size = 3,
 #c3a <- geom_line(size = 3, aes(y = deltaAIC/10, colour = "deltaAIC"))
 #c3b <- geom_point(size = 1, aes(y = deltaAIC/10, colour = "deltaAIC"))
 c3a2 <- geom_line(size = 3, aes(y = estimate+2, colour = "estimate"))
-#c3b2 <- geom_point(size = 1, aes(y = (estimate/10)+2.5, colour = "estimate"))
+#c3b2 <- geom_point(size = 1, aes(y = estimate+2, colour = "estimate"))
+c3c <- geom_errorbar(size = 1, 
+                     aes(ymax = estimate+2+SE, 
+                         ymin = estimate+2-SE, 
+                         colour = "estimate"))
 #c4a <- scale_y_continuous(sec.axis = sec_axis(~.*10, name = "delta AIC"))
 c4b <- scale_y_continuous(sec.axis = sec_axis(~.-2, name = "estimate"))
 c5 <- scale_x_reverse()
@@ -96,7 +100,7 @@ c6d <- geom_text(aes(x = vert_lin[1] + 0.01, label = "60 ha", y = 0.5),
 
 png("figures/lavskrika_F2b.png", 10000, 6000, "px", res = 600)
 
-c1 + c6a + c2a + c3a2 + c4b + c5 + c6b + c6c + c6d +
+c1 + c6a + c2a + c3a2 + c3c + c4b + c5 + c6b + c6c + c6d +
   scale_color_grey(start = 0.1, end = 0.5) + 
   scale_fill_grey(start = 0.1, end = 0.5) +
   xlab("correlation between area around the nest and nest") + 

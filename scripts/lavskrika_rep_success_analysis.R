@@ -378,6 +378,7 @@ for(i in unique(DD_all_rad$sample_rad)) {
   r.all_rad <- rbind(r.all_rad, 
                      cbind("cor" = r.cor[1],
                            "estimate" = summary(m.all_rad)$coefficients[5, 1],
+                           "SE" = summary(m.all_rad)$coefficients[5, 2],
                            "pvalue" = summary(m.all_rad)$coefficients[5, 4],
                            "AIC" = AIC(m.all_rad), 
                            "R2m" = r.squaredGLMM(m.all_rad)[1, 1],
