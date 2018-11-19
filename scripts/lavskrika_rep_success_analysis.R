@@ -7,7 +7,7 @@
 ## matters for reproductive success.
 
 ## First edit: 20180602
-## Last edit: 20181115
+## Last edit: 20181119
 
 ## Author: Julian Klein
 
@@ -82,7 +82,7 @@ D <- nest_ALS[nest_ALS$sample_rad == 15, ]
 ## Make loop through different categorisation distances and store results:
 
 r.dts_cat <- NULL
-for(i in seq(1000, 2000, 100)) {
+for(i in seq(1000, 2000, 50)) {
 
   ## Categorise dts
   D$dts_cat <- ifelse(D$dts > i, "low_ca", "high_ca")
@@ -99,6 +99,7 @@ for(i in seq(1000, 2000, 100)) {
   ## Store model output for all categorisation distances:
   r.dts_cat <- rbind(r.dts_cat, 
                      cbind(summary(m.dts_cat)$coefficients, 
+                           "R2m" = r.squaredGLMM(m.dts_cat)[1, 1],
                            "AIC" = AIC(m.dts_cat),
                            "dts_cat" = i))
 
@@ -110,7 +111,7 @@ write.csv(r.dts_cat, "results/dts_cat_results.csv")
 ## Test model assumptions with DHARMa for chosen dts_cat:
 
 ## Select dts_cat with lowest p value:
-R <- r.dts_cat[r.dts_cat[,"Pr(>|z|)"] == min(r.dts_cat[,"Pr(>|z|)"]), "dts_cat"]
+R <- r.dts_cat[r.dts_cat[,"Estimate"] == min(r.dts_cat[,"Estimate"]), "dts_cat"]
 
 D$dts_cat <- ifelse(D$dts > R, "low_ca", "high_ca")
 
@@ -241,20 +242,20 @@ model.sel(m.vd0t5_abs_log_c_15,
 
 ## 6c) and compare vd_0to5_rel; 
 
-m.vd0t5_rel_log_c <- glmer(rep_succ ~ dts_cat * vd0t5_rel_log_c +
-                             (1|female_ring) +
-                             (1|male_ring) +
-                             (1|hab_qual) +
-                             (1|year),
-                           family = binomial,
-                           data = D15,
-                           control = cont_spec)
+m.vd0t5_rel_log_c_15 <- glmer(rep_succ ~ dts_cat * vd0t5_rel_log_c +
+                                (1|female_ring) +
+                                (1|male_ring) +
+                                (1|hab_qual) +
+                                (1|year),
+                              family = binomial,
+                              data = D15,
+                              control = cont_spec)
 
 ## Test model assumptions:
-test_my_model(m.vd0t5_rel_log_c)
+test_my_model(m.vd0t5_rel_log_c_15)
 
 ## List both models in a model selection table and export results:
-model.sel(m.vd0t5_abs_log_c_15, m.vd0t5_rel_log_c) %>% capture.output(.) %>%  
+model.sel(m.vd0t5_abs_log_c_15, m.vd0t5_rel_log_c_15) %>% capture.output(.) %>%  
   write(., "results/rep_succ_mod_sel_vd0to5.txt")
 
 ## 6d) and together with forest height in the same model:
@@ -288,7 +289,7 @@ dredge(m.all_forest) %>% model.avg(., subset = delta <= 2) %>% summary(.) %>%
 DD_t <- D15[D15$dts_cat == "low_ca", ]
 
 r.rep_succ_t <- NULL
-for(i in seq(7, 18, 0.1)) {
+for(i in seq(7, 18, 0.5)) {
   
   ## Categorise vd_0to5_abs
   DD_t$vd_cat <- ifelse(DD_t$vd_0to5_abs > i, "dense", "open")
@@ -306,6 +307,7 @@ for(i in seq(7, 18, 0.1)) {
   r.rep_succ_t <- rbind(r.rep_succ_t, 
                              cbind(summary(m.rep_succ_t)$coefficients, 
                                    "AIC" = AIC(m.rep_succ_t),
+                                   "R2m" = r.squaredGLMM(m.rep_succ_t)[1, 1],
                                    "vd_cat" = i))
   
 }
@@ -374,9 +376,11 @@ for(i in unique(DD_all_rad$sample_rad)) {
  
   ## Store model output for all radiuses:
   r.all_rad <- rbind(r.all_rad, 
-                     cbind("pvalue" = summary(m.all_rad)$coefficients[5, 4],
-                           "cor" = r.cor[1],
+                     cbind("cor" = r.cor[1],
+                           "estimate" = summary(m.all_rad)$coefficients[5, 1],
+                           "pvalue" = summary(m.all_rad)$coefficients[5, 4],
                            "AIC" = AIC(m.all_rad), 
+                           "R2m" = r.squaredGLMM(m.all_rad)[1, 1],
                            "radius" = i))
   
 }

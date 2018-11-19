@@ -72,15 +72,16 @@ D_fig2$area <- round(D_fig2$radius^2*pi/10000, digits = 1)
 vert_lin <- D_fig2$cor[D_fig2$area %in% c(2, 20, 60.3)]
 
 c1 <- ggplot(D_fig2, aes(x = cor))
-c2a <- geom_line(size = 3,
-                 linetype = "dashed",
+c2a <- geom_line(size = 3, 
+                 linetype = "dashed", 
                  aes(y = pvalue, colour = "pvalue"))
 #c2b <- geom_point(size = 1, aes(y = pvalue, colour = "pvalue"))
-c3a <- geom_line(size = 3, 
-                 linetype = "dotted",
-                aes(y = deltaAIC/10, colour = "deltaAIC"))
+#c3a <- geom_line(size = 3, aes(y = deltaAIC/10, colour = "deltaAIC"))
 #c3b <- geom_point(size = 1, aes(y = deltaAIC/10, colour = "deltaAIC"))
-c4 <- scale_y_continuous(sec.axis = sec_axis(~.*10, name = "delta AIC"))
+c3a2 <- geom_line(size = 3, aes(y = estimate+2, colour = "estimate"))
+#c3b2 <- geom_point(size = 1, aes(y = (estimate/10)+2.5, colour = "estimate"))
+#c4a <- scale_y_continuous(sec.axis = sec_axis(~.*10, name = "delta AIC"))
+c4b <- scale_y_continuous(sec.axis = sec_axis(~.-2, name = "estimate"))
 c5 <- scale_x_reverse()
 c6a <- geom_vline(xintercept = vert_lin, color = "black", linetype = "dashed") 
 c6b <- geom_text(aes(x = vert_lin[2] + 0.01, label = "2 ha", y = 0.5), 
@@ -93,9 +94,9 @@ c6d <- geom_text(aes(x = vert_lin[1] + 0.01, label = "60 ha", y = 0.5),
                  angle = 90,
                  size = 10)
 
-png("figures/lavskrika_F2.png", 10000, 6000, "px", res = 600)
+png("figures/lavskrika_F2b.png", 10000, 6000, "px", res = 600)
 
-c1 + c6a + c2a + c3a + c4 + c5 + c6b + c6c + c6d +
+c1 + c6a + c2a + c3a2 + c4b + c5 + c6b + c6c + c6d +
   scale_color_grey(start = 0.1, end = 0.5) + 
   scale_fill_grey(start = 0.1, end = 0.5) +
   xlab("correlation between area around the nest and nest") + 

@@ -29,7 +29,7 @@ library(MuMIn)
 ## Define or source functions used in this script ------------------------------
 
 ## dts categorisation radius:
-R <- 1500
+R <- 1450
 
 ## Radius of 2 ha area relevant around the nest:
 A <- 80
