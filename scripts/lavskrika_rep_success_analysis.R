@@ -32,6 +32,43 @@ library(car)
 ## Specify control values for all models in this script:
 cont_spec <- glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
 
+## Calculate absolute difference in rep_succ relative to categorisation of 
+## vd_0to5_abs:
+rs_thresh <- function(data, indices) {
+  
+  d <- data[indices,] # allows boot to select sample 
+  return(abs(mean(d$rep_succ[d$dts_cat == "high_ca"], na.rm = TRUE)-
+               mean(d$rep_succ[d$dts_cat == "low_ca"], na.rm = TRUE)))
+  
+}
+
+## Calculate absolute difference in rep_succ relative to categorisation of 
+## vd_0to5_abs:
+vd_thresh <- function(data, indices) {
+  
+  d <- data[indices,] # allows boot to select sample 
+  return(abs(mean(d$rep_succ[d$vd_cat == "dense"])-
+               mean(d$rep_succ[d$vd_cat == "open"])))
+  
+}
+
+## bootstrapping function for the radius comparison:
+rsq <- function(data, indices) {
+  
+  d <- data[indices, ]
+  m.T <- glmer(rep_succ ~ dts_cat * vd0t5_abs_log_c + area +
+                 (1|female_ring) +
+                 (1|male_ring) +
+                 (1|hab_qual) +
+                 (1|year),
+               family = binomial,
+               data = d,
+               control = cont_spec)
+  
+  return(r.squaredGLMM(m.T)[1, 1])
+  
+}
+
 ## Test model assumptions:
 test_my_model <- function(m.out) {
   
@@ -95,12 +132,16 @@ for(i in seq(1000, 2000, 50)) {
                      family = binomial,  
                      data = D,
                      control = cont_spec)
+  
+  ## Calculate threshold in rep_succ between high_ca and low_ca: 
+  T1 <- boot(data = D, statistic = rs_thresh, R = 1000)
 
   ## Store model output for all categorisation distances:
   r.dts_cat <- rbind(r.dts_cat, 
                      cbind(summary(m.dts_cat)$coefficients, 
                            "R2m" = r.squaredGLMM(m.dts_cat)[1, 1],
                            "AIC" = AIC(m.dts_cat),
+                           summary(T1),
                            "dts_cat" = i))
 
 }
@@ -289,7 +330,7 @@ dredge(m.all_forest) %>% model.avg(., subset = delta <= 2) %>% summary(.) %>%
 DD_t <- D15[D15$dts_cat == "low_ca", ]
 
 r.rep_succ_t <- NULL
-for(i in seq(7, 18, 0.5)) {
+for(i in seq(5, 20, 0.5)) {
   
   ## Categorise vd_0to5_abs
   DD_t$vd_cat <- ifelse(DD_t$vd_0to5_abs > i, "dense", "open")
@@ -302,12 +343,16 @@ for(i in seq(7, 18, 0.5)) {
                         family = binomial,  
                         data = DD_t,
                         control = cont_spec)
-  
+
+  ## Calculate threshold in rep_succ between open and dense: 
+  T2 <- boot(data = DD_t, statistic = vd_thresh, R = 1000)
+
   ## Store model output for all categorisation distances:
   r.rep_succ_t <- rbind(r.rep_succ_t, 
                              cbind(summary(m.rep_succ_t)$coefficients, 
                                    "AIC" = AIC(m.rep_succ_t),
                                    "R2m" = r.squaredGLMM(m.rep_succ_t)[1, 1],
+                                   summary(T2),
                                    "vd_cat" = i))
   
 }
@@ -374,6 +419,11 @@ for(i in unique(DD_all_rad$sample_rad)) {
                      data = DD_all_rad[DD_all_rad$sample_rad == i, ],
                      control = cont_spec)
  
+  ## Make bootstrapping SE's for R2:
+  T3 <- boot(data = DD_all_rad[DD_all_rad$sample_rad == i, ],
+             statistic = rsq,
+             R = 1000)
+  
   ## Store model output for all radiuses:
   r.all_rad <- rbind(r.all_rad, 
                      cbind("cor" = r.cor[1],
@@ -382,6 +432,8 @@ for(i in unique(DD_all_rad$sample_rad)) {
                            "pvalue" = summary(m.all_rad)$coefficients[5, 4],
                            "AIC" = AIC(m.all_rad), 
                            "R2m" = r.squaredGLMM(m.all_rad)[1, 1],
+                           "bootBias_R2m" = summary(T3)$bootBias,
+                           "bootSE_R2m" = summary(T3)$bootSE,
                            "radius" = i))
   
 }
