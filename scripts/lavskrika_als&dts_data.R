@@ -211,7 +211,7 @@ ALS_by_year[paste0("y_", 2011:2013)] <-
 nest_pos <- as.data.table(nest_pos)
 
 ## Calculate radiuses for fractions of territory size 6.6E5m2:
-rad <- c(15, ceiling(sqrt(6.6E5*seq(0.01, 1, 0.01)/pi)))
+rad <- c(15, ceiling(sqrt(6.6E5/pi)*seq(0.04, 1, 0.01)))
 
 ## Define no data threshhold accepted (now 5% no data)
 nd_thresh <- 0.05

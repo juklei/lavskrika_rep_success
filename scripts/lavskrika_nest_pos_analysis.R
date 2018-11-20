@@ -32,7 +32,7 @@ library(MuMIn)
 R <- 1450
 
 ## Radius of 2 ha area relevant around the nest:
-A <- 80
+A <- 83
 
 ## Load and explore data -------------------------------------------------------
 
