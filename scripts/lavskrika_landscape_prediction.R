@@ -1,11 +1,10 @@
 ## Make predictions of the probability of reproductive success for
 ## Arvidsjaur, Lycksele and Åsele kommun and compare it with bird survey data
 ## provided by bradter et al. 2018.
-## In this script this is done for a smaller area for trial. 
-## The actual calculation is done in a different software.
+## In this script the prediction formula used in QGIS is verified.
 ##
 ## First edit: 20181114
-## Last edit: 20181119
+## Last edit: 20181121
 ##
 ## Author: Julian Klein
 
@@ -26,7 +25,7 @@ library(dplyr)
 ## Define the formula for predicting nest success: 
 ## Results from rep_succ_analysis
 
-prob_succsess <- function(data) {
+prob_success <- function(data) {
   
   p <- 0.1598 + 
     0.8465 * data$dts_low + 
@@ -47,12 +46,13 @@ p.vd0t5_abs_log_c <- read.csv("data/p.vd0t5_abs_log_c.csv")
 p.vd0t5_abs_log_c$dts_low[p.vd0t5_abs_log_c$dts_cat == "high_ca"] <- 0
 p.vd0t5_abs_log_c$dts_low[p.vd0t5_abs_log_c$dts_cat == "low_ca"] <- 1
 
-## C is needed in prob_succsess
+## C is needed in prob_success
 C <-  mean(log(p.vd0t5_abs_log_c$vd_0to5_abs), na.rm = TRUE)
 
-D_pred <- cbind("fit_formula" = prob_succsess(data = p.vd0t5_abs_log_c),
+D_pred <- cbind("fit_formula" = prob_success(data = p.vd0t5_abs_log_c),
                 p.vd0t5_abs_log_c)
 
-plot(D_pred$fit, D_pred$fit_formula); cor(D_pred$fit, D_pred$fit_formula)
+plot(D_pred$fit, D_pred$fit_formula); abline(0, 1, col = "red")
+cor(D_pred$fit, D_pred$fit_formula)
 
 ## -------------------------------END-------------------------------------------

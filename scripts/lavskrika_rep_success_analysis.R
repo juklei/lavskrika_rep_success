@@ -426,7 +426,7 @@ for(i in unique(DD_all_rad$sample_rad)) {
     ## Make bootstrapping SE's for R2:
     T3 <- boot(data = as.data.frame(DD_all_rad[DD_all_rad$sample_rad == i, ]),
                statistic = rsq,
-               R = 1000)
+               R = 100)
   
     ## Store model output for all radiuses:
     r.all_rad <- rbind(r.all_rad, 
