@@ -46,23 +46,23 @@ rs_thresh <- function(data, indices) {
 ## vd_0to5_abs:
 vd_thresh <- function(data, indices) {
   
-  d <- data[indices,] # allows boot to select sample 
-  return(abs(mean(d$rep_succ[d$vd_cat == "dense"])-
-               mean(d$rep_succ[d$vd_cat == "open"])))
+  dd <- data[indices,] # allows boot to select sample 
+  return(abs(mean(d$rep_succ[dd$vd_cat == "dense"])-
+               mean(d$rep_succ[dd$vd_cat == "open"])))
   
 }
 
 ## bootstrapping function for the radius comparison:
 rsq <- function(data, indices) {
   
-  d <- data[indices, ]
+  ddd <- data[indices, ]
   m.T <- glmer(rep_succ ~ dts_cat * vd0t5_abs_log_c + area +
                  (1|female_ring) +
                  (1|male_ring) +
                  (1|hab_qual) +
                  (1|year),
                family = binomial,
-               data = d,
+               data = ddd,
                control = cont_spec)
   
   return(r.squaredGLMM(m.T)[1, 1])
@@ -330,7 +330,7 @@ dredge(m.all_forest) %>% model.avg(., subset = delta <= 2) %>% summary(.) %>%
 DD_t <- D15[D15$dts_cat == "low_ca", ]
 
 r.rep_succ_t <- NULL
-for(i in seq(5, 20, 0.5)) {
+for(i in seq(5, 20, 0.1)) {
   
   ## Categorise vd_0to5_abs
   DD_t$vd_cat <- ifelse(DD_t$vd_0to5_abs > i, "dense", "open")
@@ -406,35 +406,42 @@ DD_all_rad[, "vd0t5_abs_log_c" := log(vd_0to5_abs) - mean(log(vd_0to5_abs)),
 r.all_rad <- NULL
 for(i in unique(DD_all_rad$sample_rad)) {
 
-  ## Calculate correlation of vd_0to5_abs at all radiuses with 15m:
-  r.cor <- cor(DD_all_rad[DD_all_rad$sample_rad == i, "vd_0to5_abs"],
-               DD_all_rad[DD_all_rad$sample_rad == 15, "vd_0to5_abs"])
+  tryCatch({
+    
+    print(i)
   
-  m.all_rad <- glmer(rep_succ ~ dts_cat * vd0t5_abs_log_c + area +
-                       (1|female_ring) +
-                       (1|male_ring) +
-                       (1|hab_qual) +
-                       (1|year),
-                     family = binomial,
-                     data = DD_all_rad[DD_all_rad$sample_rad == i, ],
-                     control = cont_spec)
+    ## Calculate correlation of vd_0to5_abs at all radiuses with 15m:
+    r.cor <- cor(DD_all_rad[DD_all_rad$sample_rad == i, "vd_0to5_abs"],
+                 DD_all_rad[DD_all_rad$sample_rad == 15, "vd_0to5_abs"])
+  
+    m.all_rad <- glmer(rep_succ ~ dts_cat * vd0t5_abs_log_c + area +
+                         (1|female_ring) +
+                         (1|male_ring) +
+                         (1|hab_qual) +
+                         (1|year),
+                       family = binomial,
+                       data = DD_all_rad[DD_all_rad$sample_rad == i, ],
+                       control = cont_spec)
  
-  ## Make bootstrapping SE's for R2:
-  T3 <- boot(data = DD_all_rad[DD_all_rad$sample_rad == i, ],
-             statistic = rsq,
-             R = 1000)
+    ## Make bootstrapping SE's for R2:
+    T3 <- boot(data = as.data.frame(DD_all_rad[DD_all_rad$sample_rad == i, ]),
+               statistic = rsq,
+               R = 1000)
   
-  ## Store model output for all radiuses:
-  r.all_rad <- rbind(r.all_rad, 
-                     cbind("cor" = r.cor[1],
-                           "estimate" = summary(m.all_rad)$coefficients[5, 1],
-                           "SE" = summary(m.all_rad)$coefficients[5, 2],
-                           "pvalue" = summary(m.all_rad)$coefficients[5, 4],
-                           "AIC" = AIC(m.all_rad), 
-                           "R2m" = r.squaredGLMM(m.all_rad)[1, 1],
-                           "bootBias_R2m" = summary(T3)$bootBias,
-                           "bootSE_R2m" = summary(T3)$bootSE,
-                           "radius" = i))
+    ## Store model output for all radiuses:
+    r.all_rad <- rbind(r.all_rad, 
+                       cbind("cor" = r.cor[1],
+                             "estimate" = summary(m.all_rad)$coefficients[5, 1],
+                             "SE" = summary(m.all_rad)$coefficients[5, 2],
+                             "pvalue" = summary(m.all_rad)$coefficients[5, 4],
+                             "AIC" = AIC(m.all_rad), 
+                             "R2m" = r.squaredGLMM(m.all_rad)[1, 1],
+                             "bootBias_R2m" = summary(T3)$bootBias,
+                             "bootSE_R2m" = summary(T3)$bootSE,
+                             "radius" = i))
+  
+  
+  }, error = function(e) {cat("ERROR :",conditionMessage(e), "\n")})
   
 }
 
