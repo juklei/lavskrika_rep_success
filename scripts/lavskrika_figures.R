@@ -72,7 +72,13 @@ D_fig2$area <- round(D_fig2$radius^2*pi/10000, digits = 2)
 vert_lin <- D_fig2$cor[D_fig2$area %in% c(2.16, 10.07, 59.72)]
 
 c1 <- ggplot(D_fig2, aes(x = cor, y = R2m))
-c2 <- geom_point(size = 4)
+c2a <- geom_point(size = 4)
+c2b <- geom_errorbar(aes(ymax = R2m + bootSE_R2m, ymin = R2m - bootSE_R2m),
+                     color = "grey")
+c2c <- geom_ribbon(aes(ymax = R2m + (1.96*bootSE_R2m),
+                       ymin = pmax(R2m - (1.96*bootSE_R2m), 0)),
+                   colour = NA, 
+                   alpha = 0.1)
 c3 <- scale_x_reverse()
 c4a <- geom_vline(xintercept = vert_lin, color = "black", linetype = "dashed") 
 c4b <- geom_text(aes(x = vert_lin[2] + 0.01, label = "2 ha", y = 0.08), 
@@ -87,7 +93,7 @@ c4d <- geom_text(aes(x = vert_lin[1] + 0.01, label = "60 ha", y = 0.08),
 
 png("figures/lavskrika_F2.png", 10000, 6000, "px", res = 600)
 
-c1 + c4a + c4b + c4c + c4d + c2 + c3 +
+c1 + c2c + c4a + c4b + c4c + c4d + c2a + c3 +
   scale_color_grey(start = 0.1, end = 0.5) + 
   scale_fill_grey(start = 0.1, end = 0.5) +
   xlab("correlation between area around the nest and nest") + 
