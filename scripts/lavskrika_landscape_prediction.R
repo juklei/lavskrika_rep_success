@@ -143,14 +143,19 @@ NA_high <- vd_lp_mean <= range_dts_high[1] | vd_lp_mean >= range_dts_high[2]
 lp_out[dts_red_cat == 1 & NA_low] <- 0
 lp_out[dts_red_cat == 0 & NA_high] <- 0
 
-## Aggregate lp_out to size of sj_occ:
-lp_out_agg <- aggregate(lp_out, fact = 160, expand = FALSE, fun = mean)
+## 6. Compare P(succ_repr) with p(Occurence) -----------------------------------
 
-## Reduce size of sj_occ for comparison:
-sj_occ_red <- crop(sj_occ, extent(lp_out))
+## Resample sj_occ to resolution of lp_out:
+sj_occ_red <- crop(sj_occ, extent(dts))
+lp_out_resamp <- resample(lp_out, sj_occ_red)
 
 ## Compare lp_out with sj_occ:
-lp_rmse <- rmse(sj_occ_red[], lp_out_agg[])
-lp_cor <- cor(sj_occ_red[], lp_out_agg[])
+plot(lp_out_resamp, sj_occ_red); abline(0, 1, col = "red")
+layerStats(stack(sj_occ_red, lp_out_resamp), 
+           stat = "pearson", 
+           na.rm = TRUE)
+
+lm(values(sj_occ_red) ~ values(lp_out_resamp), na.action = "na.exclude") %>% 
+  summary(.) %>% capture.output(.) %>% write(., "results/lm_lp.txt")
 
 ## -------------------------------END-------------------------------------------
