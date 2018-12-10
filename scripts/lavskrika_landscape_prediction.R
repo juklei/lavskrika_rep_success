@@ -147,6 +147,7 @@ lp_out[dts_red_cat == 0 & NA_high] <- 0
 
 ## Resample sj_occ to resolution of lp_out:
 sj_occ_red <- crop(sj_occ, extent(dts))
+#lp_out <- aggregate(lp_out, fact = 160, fun = mean)
 lp_out_resamp <- resample(lp_out, sj_occ_red)
 
 ## Compare lp_out with sj_occ:
