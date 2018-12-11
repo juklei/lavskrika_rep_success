@@ -160,10 +160,21 @@ dir.create("temp")
 writeRaster(lp_out_resamp, "temp/lp_out_resamp.tif")
 
 ## Compare lp_out with sj_occ:
-plot(lp_out_resamp, sj_occ); abline(0, 1, col = "red")
-layerStats(stack(sj_occ, lp_out_resamp), stat = "pearson", na.rm = TRUE)
 
-lm(values(sj_occ) ~ values(lp_out_resamp), na.action = "na.exclude") %>% 
-  summary(.) %>% capture.output(.) %>% write(., "results/lm_lp.txt")
+plot(lp_out_resamp, sj_occ); abline(0, 1, col = "red")
+
+dir.create("results")
+cor.test(sj_occ[], lp_out_resamp[], method = "spearman") %>% 
+  capture.output(.) %>% write(., "results/lm_lp.txt")
+
+## Look at disagreement:
+
+lp_rank <- lp_out_resamp/max(lp_out_resamp[], na.rm = TRUE)
+sjo_rank <- sj_occ/max(sj_occ[], na.rm = TRUE)
+
+disag <- sjo_rank - lp_rank
+
+dir.create("temp")
+writeRaster(disag, "temp/disag.tif")
 
 ## -------------------------------END-------------------------------------------
