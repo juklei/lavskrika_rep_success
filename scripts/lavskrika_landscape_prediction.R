@@ -50,7 +50,7 @@ m.fit <- load("data/m.vd0t5_abs_log_c_15.rda")
 m.fit.data <- read.csv("data/p.vd0t5_abs_log_c.csv")
 head(m.fit.data)
 
-vd_lp <- raster("data/Dens_mosaic_part.tif")*100
+vd_lp <- raster("data/Dens_05_5_mosaic.tif")*100
 ## *100 because input between 0 and 1 but formula expects between 0 and 100
 vd_lp
 
@@ -59,6 +59,8 @@ dts
 
 sj_occ <- raster("data/SFBestCellNbhMainland_99TM.tif")
 sj_occ
+
+lp_shape <- shapefile("data/lp_shape.shp")
 
 ## 4. Compare the predictions with the formula with the predictions from -------
 ##    predict()
@@ -79,6 +81,9 @@ cor(D_pred$fit, D_pred$fit_formula)
 
 ## 5. Manipulate the raster files and predict ns for all Arvidsjaur, Malå,
 ##    Lycksele and Åsele
+
+## Reduce vd_lp to the extent of dts:
+vd_lp <- crop(vd_lp, extent(dts))
 
 ## Average vd_lp within radius used for the prediction in the study:
 
@@ -105,18 +110,16 @@ vd_lp_log_cent <- log(vd_lp_mean)-C
 ## Change the resolution of dts:
 dts <- disaggregate(dts, fact = 4)
 
-## Reduce dts to extent of vd_lp:
-dts_red <- crop(dts, extent(vd_lp))
-
 ## Categorise dts:
-dts_red_cat <- dts_red >= R
+dts_cat <- dts >= R
 
 ## Predict p(successful reprduction):
 ## Overlay fastest. Tested against calc and manual calculation. Results of all
 ## three the same
 
+gc()
 t1 <- Sys.time() 
-lp_out <- overlay(vd_lp_log_cent, dts_red_cat, fun = prob_success)
+lp_out <- overlay(vd_lp_log_cent, dts_cat, fun = prob_success)
 t2 <- Sys.time()
 t2-t1
 
@@ -140,23 +143,27 @@ NA_low <- vd_lp_mean <= range_dts_low[1] | vd_lp_mean >= range_dts_low[2]
 NA_high <- vd_lp_mean <= range_dts_high[1] | vd_lp_mean >= range_dts_high[2]
 
 ## Set non study range predictions to 0. Not selected => no reproduction:
-lp_out[dts_red_cat == 1 & NA_low] <- 0
-lp_out[dts_red_cat == 0 & NA_high] <- 0
+lp_out[dts_cat == 1 & NA_low] <- 0
+lp_out[dts_cat == 0 & NA_high] <- 0
 
 ## 6. Compare P(succ_repr) with p(Occurence) -----------------------------------
 
 ## Resample sj_occ to resolution of lp_out:
-sj_occ_red <- crop(sj_occ, extent(dts))
-#lp_out <- aggregate(lp_out, fact = 160, fun = mean)
-lp_out_resamp <- resample(lp_out, sj_occ_red)
+lp_out_resamp <- resample(lp_out, sj_occ)
+
+## Reduce both to the Kommun borders of Arvidsjaur, Åsele. Malå and Lycksele
+lp_out_resamp <- mask(lp_out_resamp, lp_shape)
+sj_occ <- mask(sj_occ, lp_shape)
+
+## Temporary_export:
+dir.create("temp")
+writeRaster(lp_out_resamp, "temp/lp_out_resamp.tif")
 
 ## Compare lp_out with sj_occ:
-plot(lp_out_resamp, sj_occ_red); abline(0, 1, col = "red")
-layerStats(stack(sj_occ_red, lp_out_resamp), 
-           stat = "pearson", 
-           na.rm = TRUE)
+plot(lp_out_resamp, sj_occ); abline(0, 1, col = "red")
+layerStats(stack(sj_occ, lp_out_resamp), stat = "pearson", na.rm = TRUE)
 
-lm(values(sj_occ_red) ~ values(lp_out_resamp), na.action = "na.exclude") %>% 
+lm(values(sj_occ) ~ values(lp_out_resamp), na.action = "na.exclude") %>% 
   summary(.) %>% capture.output(.) %>% write(., "results/lm_lp.txt")
 
 ## -------------------------------END-------------------------------------------
