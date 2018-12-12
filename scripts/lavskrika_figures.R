@@ -81,23 +81,23 @@ c2c <- geom_ribbon(aes(ymax = R2m + (1.96*bootSE_R2m),
                    alpha = 0.1)
 c3 <- scale_x_reverse()
 c4a <- geom_vline(xintercept = vert_lin, color = "black", linetype = "dashed") 
-c4b <- geom_text(aes(x = vert_lin[2] + 0.01, label = "2 ha", y = 0.08), 
+c4b <- geom_text(aes(x = vert_lin[2] + 0.01, label = "10 ha", y = 0.08), 
                  angle = 90,
                  size = 10)
-c4c <- geom_text(aes(x = vert_lin[3] + 0.01, label = "10 ha", y = 0.08), 
+c4c <- geom_text(aes(x = vert_lin[3] + 0.01, label = "60 ha", y = 0.08), 
                  angle = 90,
                  size = 10)
-c4d <- geom_text(aes(x = vert_lin[1] + 0.01, label = "60 ha", y = 0.08), 
+c4d <- geom_text(aes(x = vert_lin[1] + 0.01, label = "2 ha", y = 0.08), 
                  angle = 90,
                  size = 10)
 
 png("figures/lavskrika_F2.png", 10000, 6000, "px", res = 600)
 
-c1 + c2c + c4a + c4b + c4c + c4d + c2a + c3 +
+c1 + c4a + c4b + c4c + c4d + c2a + c3 +
   scale_color_grey(start = 0.1, end = 0.5) + 
   scale_fill_grey(start = 0.1, end = 0.5) +
-  xlab("correlation between area around the nest and nest") + 
-  ylab("r-squared") + 
+  xlab("correlation of ud at nest with ud of area i around the nest") + 
+  ylab("r-squared with ud of area i") + 
   theme_classic(40)
 
 dev.off()

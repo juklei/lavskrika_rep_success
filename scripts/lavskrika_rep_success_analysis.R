@@ -151,7 +151,7 @@ write.csv(r.dts_cat, "results/dts_cat_results.csv")
 
 ## Test model assumptions with DHARMa for chosen dts_cat:
 
-## Select dts_cat with lowest p value:
+## Select dts_cat with lowest Estimate:
 R <- r.dts_cat[r.dts_cat[,"Estimate"] == min(r.dts_cat[,"Estimate"]), "dts_cat"]
 
 D$dts_cat <- ifelse(D$dts > R, "low_ca", "high_ca")
@@ -319,6 +319,37 @@ test_my_model(m.all_forest)
 dredge(m.all_forest) %>% model.avg(., subset = delta <= 2) %>% summary(.) %>% 
   capture.output(.) %>% write(., "results/rep_succ_mod_sel_forest_metrics.txt")
   
+## 6f) Check the sensitivity of the results relative to dts_cat:
+
+## Make loop through different categorisation distances and store results:
+
+r.sensitivity <- NULL
+for(i in seq(1000, 2000, 50)) {
+  
+  ## Categorise dts
+  D15$dts_cat <- ifelse(D15$dts > i, "low_ca", "high_ca")
+  
+  m.sensitivity <- glmer(rep_succ ~ dts_cat * vd0t5_abs_log_c +
+                           (1|female_ring) +
+                           (1|male_ring) +
+                           (1|hab_qual) +
+                           (1|year),
+                         family = binomial,  
+                         data = D15,
+                         control = cont_spec)
+  
+  ## Store model output for all categorisation distances:
+  r.sensitivity <- rbind(r.sensitivity, 
+                     cbind(summary(m.sensitivity)$coefficients, 
+                           "R2m" = r.squaredGLMM(m.sensitivity)[1, 1],
+                           "AIC" = AIC(m.sensitivity),
+                           "dts_cat" = i))
+  
+}
+
+dir.create("results")
+write.csv(r.sensitivity, "results/sensitivity.csv")
+
 ## 7. Assess if a natural threshold can be identified for high corvid ----------
 ##    activity. For this we classify vd_to5_abs into two categories in steps 
 ##    low to high density and test the effect on rep_success. The threshold 
