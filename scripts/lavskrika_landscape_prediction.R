@@ -161,18 +161,46 @@ writeRaster(lp_out_resamp, "temp/lp_out_resamp.tif")
 
 ## Compare lp_out with sj_occ:
 
-plot(lp_out_resamp, sj_occ); abline(0, 1, col = "red")
-
 dir.create("results")
-cor.test(sj_occ[], lp_out_resamp[], method = "spearman") %>% 
-  capture.output(.) %>% write(., "results/lm_lp.txt")
+capture.output(
+  
+  "Av" = cor.test(mask(sj_occ, lp_shape[lp_shape$KnNamn == "Arvidsjaur", ])[],
+                  mask(lp_out_resamp, 
+                       lp_shape[lp_shape$KnNamn == "Arvidsjaur", ])[],
+                  method = "spearman"),
+  "Ma" = cor.test(mask(sj_occ, lp_shape[lp_shape$KnNamn == "Malå", ])[],
+                  mask(lp_out_resamp, lp_shape[lp_shape$KnNamn == "Malå", ])[],
+                  method = "spearman"),
+  "Ly" = cor.test(mask(sj_occ, lp_shape[lp_shape$KnNamn == "Lycksele", ])[],
+                  mask(lp_out_resamp, 
+                       lp_shape[lp_shape$KnNamn == "Lycksele", ])[],
+                  method = "spearman"),
+  "As" = cor.test(mask(sj_occ, lp_shape[lp_shape$KnNamn == "Åsele", ])[],
+                  mask(lp_out_resamp, lp_shape[lp_shape$KnNamn == "Åsele", ])[],
+                  method = "spearman")
+  
+) %>% write(., "results/lm_lp_rho.txt")
 
 ## Look at disagreement:
 
 lp_rank <- lp_out_resamp/max(lp_out_resamp[], na.rm = TRUE)
 sjo_rank <- sj_occ/max(sj_occ[], na.rm = TRUE)
 
-disag <- sjo_rank - lp_rank
+disag <- abs(sjo_rank - lp_rank)
+
+dir.create("results")
+capture.output(
+  print("Arvidsjaur"),
+  mean(mask(disag, lp_shape[lp_shape$KnNamn == "Arvidsjaur", ])[], 
+       na.rm = TRUE),
+  print("Malå"),
+  mean(mask(disag, lp_shape[lp_shape$KnNamn == "Malå", ])[], na.rm = TRUE),
+  print("Lycksele"),
+  mean(mask(disag, lp_shape[lp_shape$KnNamn == "Lycksele", ])[], na.rm = TRUE),
+  print("Åsele"),
+  mean(mask(disag, lp_shape[lp_shape$KnNamn == "Åsele", ])[], na.rm = TRUE)
+
+) %>% write(., "results/disagreement.txt")
 
 dir.create("temp")
 writeRaster(disag, "temp/disag.tif")
