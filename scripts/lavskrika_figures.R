@@ -21,6 +21,7 @@ library(dplyr)
 ## 3. Load and explore data ----------------------------------------------------
 
 dir("data")
+
 D_fig1 <- read.csv("data/p.vd0t5_abs_log_c.csv")
 D_fig2 <- read.csv("data/all_rad_results.csv")
 D_fig3 <- read.csv("data/p.nest_pos.csv")
@@ -39,10 +40,11 @@ p1 <- ggplot(D_fig1, aes(x = vd_0to5_abs,
                          color = dts_cat))
 p2 <- geom_jitter(size = 4, na.rm = TRUE, width = 0, height = 0.01)
 p3 <- geom_line(aes(x = vd_0to5_abs, y = fit, lty = dts_cat), size = 3)
-p4 <- geom_ribbon(aes(ymin = pmax(fit - (1.96*se.fit), 0), 
-                      ymax = pmin(fit + (1.96*se.fit), 1)),
+p4 <- geom_ribbon(aes(ymin = pmax(fit - (1*se.fit), 0), 
+                      ymax = pmin(fit + (1*se.fit), 1)),
                   colour = NA, 
                   alpha = 0.1)
+p5 <- annotate("text", 10, 0.15, label = "R2m = 0.08 / R2c = 0.17", size = 10)
 
 ## Store figures:
 
@@ -50,7 +52,7 @@ dir.create("figures")
 
 png("figures/lavskrika_F1.png", 10000, 7000, "px", res = 600)
 
-p1 + p2 + p3 + p4 +
+p1 + p2 + p3 + p4 + p5 +
   scale_color_grey(start = 0.1, end = 0.5) + 
   scale_fill_grey(start = 0.1, end = 0.5) +
   ylab("probability of succesful reproduction") + 
