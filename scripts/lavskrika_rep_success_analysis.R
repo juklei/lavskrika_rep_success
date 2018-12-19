@@ -7,7 +7,7 @@
 ## matters for reproductive success.
 
 ## First edit: 20180602
-## Last edit: 20181119
+## Last edit: 20181219
 
 ## Author: Julian Klein
 
@@ -247,7 +247,20 @@ m.dts_cat_15 <- glmer(rep_succ ~ dts_cat +
 ## Test model assumptions:
 test_my_model(m.dts_cat_15)
 
-## With absolute veg density as a linear predictor:
+## With absolute veg density only as a linear predictor:
+m.vd0t5_abs_c_15_only <- glmer(rep_succ ~ vd0t5_abs_c +
+                                 (1|female_ring) +
+                                 (1|male_ring) +
+                                 (1|hab_qual) +
+                                 (1|year),
+                               family = binomial,
+                               data = D15,
+                               control = cont_spec)
+
+## Test model assumptions:
+test_my_model(m.vd0t5_abs_c_15_only)
+
+## With absolute veg density as a linear predictor in interaction with dts:
 m.vd0t5_abs_c_15 <- glmer(rep_succ ~ dts_cat * vd0t5_abs_c +
                             (1|female_ring) +
                             (1|male_ring) +
@@ -277,6 +290,7 @@ test_my_model(m.vd0t5_abs_c_15)
 model.sel(m.vd0t5_abs_log_c_15,
           m.int, 
           m.dts_cat_15, 
+          m.vd0t5_abs_c_15_only,
           m.vd0t5_abs_c_15, 
           m.vd0t5_abs_c_poly_15) %>% capture.output(.) %>% 
   write(., "results/rep_succ_mod_sel_formula.txt")
