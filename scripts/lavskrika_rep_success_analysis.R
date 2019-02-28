@@ -119,7 +119,7 @@ D <- nest_ALS[nest_ALS$sample_rad == 15, ]
 ## Make loop through different categorisation distances and store results:
 
 r.dts_cat <- NULL
-for(i in seq(1000, 2000, 50)) {
+for(i in seq(500, 3500, 50)) {
 
   ## Categorise dts
   D$dts_cat <- ifelse(D$dts > i, "low_ca", "high_ca")
@@ -147,7 +147,7 @@ for(i in seq(1000, 2000, 50)) {
 }
 
 dir.create("results")
-write.csv(r.dts_cat, "results/dts_cat_results.csv")
+write.csv(r.dts_cat, "results/dts_cat_results2.csv")
 
 ## Test model assumptions with DHARMa for chosen dts_cat:
 
@@ -338,7 +338,7 @@ dredge(m.all_forest) %>% model.avg(., subset = delta <= 2) %>% summary(.) %>%
 ## Make loop through different categorisation distances and store results:
 
 r.sensitivity <- NULL
-for(i in seq(1000, 2000, 50)) {
+for(i in seq(500, 3500, 50)) {
   
   ## Categorise dts
   D15$dts_cat <- ifelse(D15$dts > i, "low_ca", "high_ca")
@@ -362,7 +362,7 @@ for(i in seq(1000, 2000, 50)) {
 }
 
 dir.create("results")
-write.csv(r.sensitivity, "results/sensitivity.csv")
+write.csv(r.sensitivity, "results/sensitivity2.csv")
 
 ## 7. Assess if a natural threshold can be identified for high corvid ----------
 ##    activity. For this we classify vd_to5_abs into two categories in steps 
