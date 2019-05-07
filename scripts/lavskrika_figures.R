@@ -1,8 +1,8 @@
 ## In this script all figures for the SJ rep_sucess paper are produced
 ## 
 ##
-## First edit: 
-## Last edit: 
+## First edit: 20181101
+## Last edit: 20190420
 ##
 ## Author: Julian Klein
 
@@ -32,7 +32,7 @@ head(D_fig3)
 ## 4. Produce Figure 1 showing the main results for the 15m radius -------------
 
 ## Change dts_cat level names:
-levels(D_fig1$dts_cat) <- c("high corvid activity", "low corvid activity") 
+levels(D_fig1$dts_cat) <- c("high corvid occurrence", "low corvid occurrence") 
 
 p1 <- ggplot(D_fig1, aes(x = vd_0to5_abs, 
                          y = rep_succ, 
@@ -52,11 +52,13 @@ dir.create("figures")
 
 png("figures/lavskrika_F1.png", 10000, 7000, "px", res = 600)
 
-p1 + p2 + p3 + p4 + p5 +
-  scale_color_grey(start = 0.1, end = 0.5) + 
-  scale_fill_grey(start = 0.1, end = 0.5) +
+p1 + p2 + p3 + p4 +
+  scale_color_manual(breaks = c("high corvid occurrence", "low corvid occurrence"),
+                     values=c("red", "blue")) + 
+  scale_fill_manual(breaks = c("high corvid occurrence", "low corvid occurrence"),
+                    values=c("red", "blue")) +
   ylab("probability of succesful reproduction") + 
-  xlab("understorey density") + 
+  xlab("understory density") + 
   theme_classic(40) +                  
   theme(legend.position = c(0.8, 0.2), 
         legend.title = element_blank(),
@@ -71,7 +73,7 @@ dev.off()
 D_fig2$area <- round(D_fig2$radius^2*pi/10000, digits = 2)
 
 ## Calculate cor values used for vertical lines below:
-vert_lin <- D_fig2$cor[D_fig2$area %in% c(2.16, 10.07, 59.72)]
+vert_lin <- D_fig2$cor[D_fig2$radius %in% c(78, 202, 450)]
 
 c1 <- ggplot(D_fig2, aes(x = cor, y = R2m))
 c2a <- geom_point(size = 4)
@@ -83,14 +85,14 @@ c2c <- geom_ribbon(aes(ymax = R2m + (1.96*bootSE_R2m),
                    alpha = 0.1)
 c3 <- scale_x_reverse()
 c4a <- geom_vline(xintercept = vert_lin, color = "black", linetype = "dashed") 
-c4b <- geom_text(aes(x = vert_lin[2] + 0.01, label = "10 ha", y = 0.08), 
-                 angle = 90,
+c4b <- geom_text(aes(x = vert_lin[2] + 0.025, label = "450 m", y = 0.115), 
+                 angle = 0,
                  size = 10)
-c4c <- geom_text(aes(x = vert_lin[3] + 0.01, label = "60 ha", y = 0.08), 
-                 angle = 90,
+c4c <- geom_text(aes(x = vert_lin[3] + 0.021, label = "80 m", y = 0.115), 
+                 angle = 0,
                  size = 10)
-c4d <- geom_text(aes(x = vert_lin[1] + 0.01, label = "2 ha", y = 0.08), 
-                 angle = 90,
+c4d <- geom_text(aes(x = vert_lin[1] + 0.025, label = "200 m", y = 0.115), 
+                 angle = 0,
                  size = 10)
 
 png("figures/lavskrika_F2.png", 10000, 6000, "px", res = 600)
@@ -98,8 +100,8 @@ png("figures/lavskrika_F2.png", 10000, 6000, "px", res = 600)
 c1 + c4a + c4b + c4c + c4d + c2a + c3 +
   scale_color_grey(start = 0.1, end = 0.5) + 
   scale_fill_grey(start = 0.1, end = 0.5) +
-  xlab("correlation of ud at nest with ud of area i around the nest") + 
-  ylab("r-squared with ud of area i") + 
+  xlab("correlation of ud at nest with ud at radius i around the nest") + 
+  ylab("r-squared with ud at radius i") + 
   theme_classic(40)
 
 dev.off()
