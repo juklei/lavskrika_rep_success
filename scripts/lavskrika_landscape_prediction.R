@@ -183,8 +183,10 @@ capture.output(
 
 ## Look at disagreement:
 
-lp_rank <- lp_out_resamp/max(lp_out_resamp[], na.rm = TRUE)
-sjo_rank <- sj_occ/max(sj_occ[], na.rm = TRUE)
+lp_rank <- (lp_out_resamp - min(lp_out_resamp[], na.rm = TRUE))/
+           (max(lp_out_resamp[], na.rm = TRUE) - min(lp_out_resamp[], na.rm = TRUE))
+sjo_rank <- (sj_occ - min(sj_occ[], na.rm = TRUE))/
+            (max(sj_occ[], na.rm = TRUE) - min(sj_occ[], na.rm = TRUE))
 
 disag <- abs(sjo_rank - lp_rank)
 
@@ -200,9 +202,13 @@ capture.output(
   print("Åsele"),
   mean(mask(disag, lp_shape[lp_shape$KnNamn == "Åsele", ])[], na.rm = TRUE)
 
-) %>% write(., "results/disagreement.txt")
+) %>% write(., "results/disagreement_83.txt")
 
 dir.create("temp")
-writeRaster(disag, "temp/disag.tif")
+writeRaster(disag, "temp/disag_83.tif")
+
+## Compare 15 m with 83 m:
+
+cor.test(na.omit(disag15[]), na.omit(disag83[]))
 
 ## -------------------------------END-------------------------------------------

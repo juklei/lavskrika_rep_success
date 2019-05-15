@@ -1,0 +1,194 @@
+---
+title: "Remotely sensed forest understory density and nest predator occurrence interact to predict suitable breeding habitat and the occurrence of a resident boreal bird species - Part 3"
+author: "Julian Klein"
+date: "14 May 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "C:/RDefaultDirectory/RProjects/Lavskrika/lavskrika_rep_success")
+```
+
+# Part 3: Comparison between model predictions for breeding success and siberian jay occurrence.
+
+The is based on rasters data extracted from .las files with FUSION. As raw LiDAR data cannot be redistributed part 3 cannot be run without first downloading LiDAR data from www.lantmateriet.se. The download is not free.
+
+The raster showing Siberian jay occurrences will have to be required at Bradter et al.
+
+The raster showing distance to settlements will have to be required at Statistics Sweden (SCB)
+
+The analysis presented here is based on habitat data for 15 m around the nest.
+The analysis for 80 m around the nest is exactly the same and correlated with 0.84
+
+# Start:
+
+1. Load all packages:
+
+```{r, message=F, warning=F}
+library(raster)
+library(Metrics)
+```
+
+2. Define all functions:
+
+```{r}
+## Define the formula for predicting nest success
+## Results from rep_succ_analysis with 15m rad
+prob_success <- function(x, y) {
+  
+  p <- 0.1598 + 
+    0.8465 * y + ## y = dts_far
+    0.3624 * x - ## x = centered(log(vd_0to5))
+    1.4957 * y * x
+  
+  return(exp(p)/(1+exp(p)))
+  
+}
+
+## Define dts categorisation distance
+R <- 1450
+
+## Define focal rad
+rad <- 15
+```
+
+3. Load all data:
+
+```{r}
+lp_shape <- shapefile("data/lp_shape.shp") ## Shape of the chosen area
+## p.fit.data is the prediction data with the lme4 package produced in part 2 and reimported into part 3 here
+p.fit.data <- read.csv("data/p.vd0t5_log_c.csv")
+head(p.fit.data)
+```
+
+```{r}
+vd_lp <- raster("data/Dens_05_5_mosaic.tif")*100
+## *100 because input between 0 and 1 but formula expects between 0 and 100
+plot(vd_lp); plot(lp_shape, add = TRUE)
+```
+
+```{r}
+dts <- raster("data/dts.tif")
+plot(dts); plot(lp_shape, add = TRUE)
+```
+
+```{r}
+sj_occ <- raster("data/SFBestCellNbhMainland_99TM.tif")
+plot(sj_occ); plot(lp_shape, add = TRUE)
+```
+
+4. Compare the predictions with the formula with the predictions from predict() to test if the formula is correct:
+
+```{r}
+## 
+p.fit.data$dts_far[p.fit.data$dts_cat == "close"] <- 0
+p.fit.data$dts_far[p.fit.data$dts_cat == "far"] <- 1
+
+## C is needed in prob_success
+C <- mean(log(p.fit.data$vd_0to5), na.rm = TRUE)
+
+D_pred <- cbind("fit_formula" = prob_success(x = log(p.fit.data$vd_0to5) - C, y = p.fit.data$dts_far), p.fit.data)
+
+plot(D_pred$fit, D_pred$fit_formula); abline(0, 1, col = "red")
+```
+
+5.  Adjust the raster files and predict breeding success for Arvidsjaur, Malå, Lycksele and Åsele
+
+```{r}
+## Reduce vd_lp to the extent of dts
+vd_lp <- crop(vd_lp, extent(dts))
+
+## Average vd_lp within radius used for the prediction in the study
+
+## Define raster with value = 1 for all cells where understorey is not NA
+num_vd_lp <- vd_lp 
+num_vd_lp[!is.na(num_vd_lp)] <- 1 
+
+#Define focal filter
+f <- focalWeight(vd_lp, d = rad, type = "circle") 
+f[f > 0] <- 1 
+
+#Calculate sum of raster cells in focal filter
+vd_lp_sum <- focal(vd_lp, f, fun = sum, na.rm = TRUE) 
+
+#Calculate number of raster cells in focal filter
+vd_lp_num <- focal(num_vd_lp, f, fun = sum, na.rm = TRUE)
+
+## Calculate mean within rad
+vd_lp_mean <- vd_lp_sum / vd_lp_num
+
+## Calculate centered log of vd_lp_mean
+vd_lp_log_cent <- log(vd_lp_mean)-C 
+
+## Change the resolution of dts
+dts <- disaggregate(dts, fact = 4)
+
+## Categorise dts
+dts_cat <- dts >= R
+```
+
+```{r, echo=FALSE}
+invisible(gc())
+```
+
+```{r}
+## Predict p(successful reprduction)
+## Overlay fastest. Tested against calc and manual calculation. Results of all three the same
+t1 <- Sys.time() 
+lp_out <- overlay(vd_lp_log_cent, dts_cat, fun = prob_success)
+t2 <- Sys.time()
+t2-t1
+
+## All NA's in lp_out become 0 as they are non-habitat and no reproduction is expected there
+lp_out[is.na(lp_out)] <- 0
+```
+
+```{r, echo=FALSE}
+invisible(gc())
+```
+
+```{r}
+## Reduce lp_out to range found in study
+
+range_far <- c(min(p.fit.data$vd_0to5[p.fit.data$dts_far == 1]), max(p.fit.data$vd_0to5[p.fit.data$dts_far == 1]))
+range_close <- c(min(p.fit.data$vd_0to5[p.fit.data$dts_far == 0]), max(p.fit.data$vd_0to5[p.fit.data$dts_far == 0]))
+
+## Define rasters that will become NA after the prediction
+NA_far <- vd_lp_mean <= range_far[1] | vd_lp_mean >= range_far[2]
+NA_close <- vd_lp_mean <= range_close[1] | vd_lp_mean >= range_close[2]
+```
+
+```{r}
+## Set non study range predictions to 0. Not selected => no reproduction
+lp_out[dts_cat == 1 & NA_far] <- 0
+lp_out[dts_cat == 0 & NA_close] <- 0
+```
+
+5. Compare P(succ_repr) with p(Occurence): 
+
+```{r, echo=FALSE}
+invisible(gc())
+```
+
+```{r}
+## Resample sj_occ to resolution of lp_out
+lp_out_resamp <- resample(lp_out, sj_occ)
+
+## Reduce both to the Kommun borders of Arvidsjaur, Åsele. Malå and Lycksele
+lp_out_resamp <- mask(lp_out_resamp, lp_shape)
+sj_occ <- mask(sj_occ, lp_shape)
+
+## Compare lp_out with sj_occ:
+cor.test(sj_occ[], lp_out_resamp[])
+
+## Look at disagreement after normalisation of both rasters
+
+lp_norm <- (lp_out_resamp - min(lp_out_resamp[], na.rm = TRUE))/(max(lp_out_resamp[], na.rm = TRUE) - min(lp_out_resamp[], na.rm = TRUE))
+sjo_norm <- (sj_occ - min(sj_occ[], na.rm = TRUE))/(max(sj_occ[], na.rm = TRUE) - min(sj_occ[], na.rm = TRUE))
+
+disag <- abs(sjo_norm - lp_norm)
+
+plot(crop(disag, extent(lp_shape)), col = bpy.colors())
+```
+

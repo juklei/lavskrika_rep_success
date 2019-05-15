@@ -32,7 +32,8 @@ head(D_fig3)
 ## 4. Produce Figure 1 showing the main results for the 15m radius -------------
 
 ## Change dts_cat level names:
-levels(D_fig1$dts_cat) <- c("high corvid occurrence", "low corvid occurrence") 
+levels(D_fig1$dts_cat) <- c("close to human settlement", 
+                            "far from human settlement") 
 
 p1 <- ggplot(D_fig1, aes(x = vd_0to5_abs, 
                          y = rep_succ, 
@@ -50,12 +51,14 @@ p5 <- annotate("text", 10, 0.15, label = "R2m = 0.08 / R2c = 0.17", size = 10)
 
 dir.create("figures")
 
-png("figures/lavskrika_F1.png", 10000, 7000, "px", res = 600)
+png("figures/lavskrika_F1.png", 10000/4, 7000/4, "px", res = 600/4)
 
 p1 + p2 + p3 + p4 +
-  scale_color_manual(breaks = c("high corvid occurrence", "low corvid occurrence"),
+  scale_color_manual(breaks = c("close to human settlement", 
+                                "far from human settlement"),
                      values=c("red", "blue")) + 
-  scale_fill_manual(breaks = c("high corvid occurrence", "low corvid occurrence"),
+  scale_fill_manual(breaks = c("close to human settlement", 
+                               "far from human settlement"),
                     values=c("red", "blue")) +
   ylab("probability of succesful reproduction") + 
   xlab("understory density") + 

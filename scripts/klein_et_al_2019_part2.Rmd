@@ -1,0 +1,312 @@
+---
+title: "Remotely sensed forest understory density and nest predator occurrence interact to predict suitable breeding habitat and the occurrence of a resident boreal bird species - Part 2"
+author: "Julian Klein"
+date: "14 May 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "C:/RDefaultDirectory/RProjects/Lavskrika/lavskrika_rep_success")
+```
+
+# Part 2: The whole analysis of breeding succes is perfomred in this script. The landscape prediction comparison is in part 3.
+
+# Start:
+
+1. Load all packages:
+
+```{r, message=F, warning=F}
+library(data.table)
+library(MuMIn)
+library(DHARMa)
+library(lme4)
+library(car)
+library(ggplot2)
+```
+
+2. Define all functions:
+
+```{r}
+## Specify control values for all models in this script
+cont_spec <- glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 100000))
+
+## Test model assumptions
+test_my_model <- function(m.out) {
+  
+  sim <- simulateResiduals(m.out)
+  plot(sim)
+  print(testUniformity(sim))
+  print(testZeroInflation(sim))
+  print(testDispersion(sim))
+  print("Variance Inflation Factor:")
+  print(vif(m.out))
+  
+}
+```
+
+3. Load all data:
+
+```{r}
+## ALS data and nest data comnbined
+nest_ALS <- read.csv("data/siberian_jay_data.csv")
+
+head(nest_ALS); str(nest_ALS)
+```
+
+4. Make models for different dts categorisation and categorise dts according to result.
+
+```{r, message=F, warning=F}
+## Reduce nest_ALS to one sample radius
+D <- nest_ALS[nest_ALS$sample_rad == 15, ]
+
+## Make loop through different categorisation distances and store results
+r.dts_cat <- NULL
+for(i in seq(500, 3500, 50)) {
+
+  ## Categorise dts
+  D$dts_cat <- ifelse(D$dts > i, "far", "close")
+
+  m.dts_cat <- glmer(rep_succ ~ dts_cat + (1|female_ring) + (1|male_ring) + (1|hab_qual) + (1|year), 
+                     family = binomial, 
+                     data = D, 
+                     control = cont_spec)
+  
+  ## Store model output for all categorisation distances
+  r.dts_cat <- rbind(r.dts_cat, cbind("AIC" = AIC(m.dts_cat), "dts_cat" = i))
+
+}
+
+head(r.dts_cat)
+```
+
+```{r}
+## Test model assumptions with DHARMa for chosen dts_cat
+
+## Select dts_cat with lowest Estimate
+R <- r.dts_cat[r.dts_cat[,"AIC"] == min(r.dts_cat[,"AIC"]), "dts_cat"]
+print(R)
+```
+
+```{r, message=F, warning=F}
+D$dts_cat <- ifelse(D$dts > R, "far", "close")
+
+m.dts_cat <- glmer(rep_succ ~ dts_cat + (1|female_ring) + (1|male_ring) + (1|hab_qual) + (1|year), 
+                   family = binomial, 
+                   data = D, 
+                   control = cont_spec)
+
+tryCatch(test_my_model(m.dts_cat), error = function(e) {cat("ERROR :", conditionMessage(e), "\n")})
+```
+
+5. Make the main model testing ALS on breeding success for 15 m radius around the nest, beacuse most data for that one. Test alternative (linear and quadratic instead of logarithmic) relationships between understory density and breeding success with AIC.
+
+```{r, message=F, warning=F}
+## Categorise dts according to the results above in nest_ALS
+nest_ALS$dts_cat <- ifelse(nest_ALS$dts > R, "far", "close")
+
+## Exclude NA's in data set for use in models below
+DD <- na.omit(nest_ALS)
+
+## Reduce DD to D15
+D15 <- DD[DD$sample_rad == 15, ]
+
+## Add logarithmic version of vd_0to5
+D15$vd0t5_log <- log(D15$vd_0to5)
+
+## Center all continuous variables to avoid covariate correlations
+D15$vd0t5_log_c <- D15$vd0t5_log - mean(D15$vd0t5_log)
+D15$vd0t5_c <- D15$vd_0to5 - mean(D15$vd_0to5)
+
+## Test log model with veg density as a logarithmic predictor 
+
+m.vd0t5_log_c_15 <- glmer(rep_succ ~ dts_cat * vd0t5_log_c + (1|female_ring) + (1|male_ring) + (1|hab_qual) + (1|year),
+                              family = binomial,
+                              data = D15,
+                              control = cont_spec)
+
+summary(m.vd0t5_log_c_15)
+```
+
+```{r, message=F, warning=F}
+r.squaredGLMM(m.vd0t5_log_c_15)
+```
+
+```{r, message=F, warning=F}
+test_my_model(m.vd0t5_log_c_15)
+```
+
+```{r, message=F, warning=F}
+## Store data set with prediction for figur1 which is produced below
+fig1 <- cbind(predict(m.vd0t5_log_c_15, re.form = NA, se.fit = TRUE, type = "response"), 
+              D15[, c("rep_succ", "dts_cat", "vd_0to5")])
+
+## Compare to quadratic, linear and intercep only model
+
+## Only the intercept:
+m.int <- glmer(rep_succ ~ (1|female_ring) + (1|male_ring) + (1|hab_qual) + (1|year),
+               family = binomial,
+               data = D15,
+               control = cont_spec)
+
+## Distance to settlement only:
+m.dts_cat_15 <- glmer(rep_succ ~ dts_cat + (1|female_ring) + (1|male_ring) + (1|hab_qual) + (1|year),
+                      family = binomial,
+                      data = D15,
+                      control = cont_spec)
+
+## With veg density only as a linear predictor:
+m.vd0t5_c_15_only <- glmer(rep_succ ~ vd0t5_c + (1|female_ring) + (1|male_ring) + (1|hab_qual) + (1|year),
+                               family = binomial,
+                               data = D15,
+                               control = cont_spec)
+## Test model assumptions:
+tryCatch(test_my_model(m.vd0t5_c_15_only), error = function(e) {cat("ERROR :", conditionMessage(e), "\n")})
+```
+
+```{r, message=F, warning=F}
+## With veg density as a linear predictor in interaction with dts:
+m.vd0t5_c_15 <- glmer(rep_succ ~ dts_cat * vd0t5_c + (1|female_ring) + (1|male_ring) + (1|hab_qual) + (1|year),
+                          family = binomial,
+                          data = D15,
+                          control = cont_spec)
+## Test model assumptions:
+test_my_model(m.vd0t5_c_15)
+```
+
+```{r, message=F, warning=F}
+## With veg density as a quadratic predictor:
+m.vd0t5_c_poly_15 <- glmer(rep_succ ~ dts_cat * poly(vd0t5_c, 2) + (1|female_ring) + (1|male_ring) + (1|hab_qual) + (1|year),
+                               family = binomial,
+                               data = D15,
+                               control = cont_spec)
+## Test model assumptions:
+test_my_model(m.vd0t5_c_15)
+```
+
+```{r, message=F, warning=F}
+## List all models above in a model selection table and export results:
+model.sel(m.vd0t5_log_c_15, m.int, m.dts_cat_15, m.vd0t5_c_15_only, m.vd0t5_c_15, m.vd0t5_c_poly_15)
+```
+
+6. Check wether the results of the main model are sensitive to the categorisation distance of the distance of the nest to the closest settlement.
+
+```{r, message=F, warning=F}
+## Make loop through different categorisation distances and store results:
+r.sensitivity <- NULL
+for(i in seq(500, 3500, 50)) {
+  
+  ## Categorise dts
+  D15$dts_cat <- ifelse(D15$dts > i, "far", "close")
+  
+  m.sensitivity <- glmer(rep_succ ~ dts_cat * vd0t5_log_c + (1|female_ring) + (1|male_ring) + (1|hab_qual) + (1|year),
+                         family = binomial,  
+                         data = D15,
+                         control = cont_spec)
+  
+  ## Store model output for all categorisation distances:
+  r.sensitivity <- rbind(r.sensitivity, 
+                         cbind(summary(m.sensitivity)$coefficients, 
+                               "R2m" = r.squaredGLMM(m.sensitivity)[1, 1], 
+                               "AIC" = AIC(m.sensitivity), 
+                               "dts_cat" = i))
+  
+}
+
+head(r.sensitivity)
+```
+
+7. Test the logarithmic model with understory density for all radiuses around the nest and extract AIC values. Also calculate the correlation of the mean vd_0to5 of all radiuses with 15 m.
+
+```{r, message=F, warning=F}
+## Reduce data set so the same nests are used for all radiuses:
+
+## Which radius has fewest nests?
+N1 <- names(sort(table(DD$sample_rad)))[1]
+
+## Which nests are those?
+N2 <- DD[DD$sample_rad == N1 & !is.na(DD$vd_0to5), "name"]
+
+## Select only those nests:
+DD_all_rad <- DD[DD$name %in% N2, ]
+
+## Add centered log(vd_0to5) by radius:
+DD_all_rad <- as.data.table(DD_all_rad)
+DD_all_rad[, "vd0t5_log_c" := log(vd_0to5) - mean(log(vd_0to5)), by = "sample_rad"]
+
+## Make a loop through all radiuses, run the log model and store results:
+
+r.all_rad <- NULL
+for(i in unique(DD_all_rad$sample_rad)) {
+
+  tryCatch({
+    
+    ## Calculate correlation of vd_0to5 at all radiuses with 15m:
+    r.cor <- cor(DD_all_rad[DD_all_rad$sample_rad == i, "vd_0to5"],
+                 DD_all_rad[DD_all_rad$sample_rad == 15, "vd_0to5"])
+  
+    m.all_rad <- glmer(rep_succ ~ dts_cat * vd0t5_log_c + area + (1|female_ring) + (1|male_ring) + (1|hab_qual) + (1|year),
+                       family = binomial,
+                       data = DD_all_rad[DD_all_rad$sample_rad == i, ],
+                       control = cont_spec)
+  
+    ## Store model output for all radiuses:
+    r.all_rad <- rbind(r.all_rad, 
+                       cbind("cor" = r.cor[1],
+                             "estimate" = summary(m.all_rad)$coefficients[5, 1],
+                             "SE" = summary(m.all_rad)$coefficients[5, 2],
+                             "pvalue" = summary(m.all_rad)$coefficients[5, 4],
+                             "AIC" = AIC(m.all_rad), 
+                             "R2m" = r.squaredGLMM(m.all_rad)[1, 1],
+                             "radius" = i))
+  
+  }, error = function(e) {cat("ERROR :", conditionMessage(e), "\n")})
+  
+}
+
+## Add deltaAIC to results:
+r.all_rad <- as.data.frame(r.all_rad)
+r.all_rad$deltaAIC <- r.all_rad$AIC - min(r.all_rad$AIC)
+
+print(r.all_rad)
+```
+
+8. Figure 1:
+
+```{r}
+## Change dts_cat level names:
+fig1$dts_cat <- as.factor(fig1$dts_cat)
+levels(fig1$dts_cat) <- c("close to human settlement", "far from human settlement") 
+
+ggplot(fig1, aes(x = vd_0to5, y = rep_succ, fill = dts_cat, color = dts_cat)) +
+geom_jitter(size = 2, na.rm = TRUE, width = 0, height = 0.01) +
+geom_line(aes(x = vd_0to5, y = fit, lty = dts_cat), size = 2) +
+geom_ribbon(aes(ymin = fit - se.fit, ymax = fit + se.fit), colour = NA, alpha = 0.1) +
+scale_color_manual(breaks = c("close to human settlement", "far from human settlement"), values = c("red", "blue")) + 
+scale_fill_manual(breaks = c("close to human settlement", "far from human settlement"), values = c("red", "blue")) +
+ylab("probability of succesful reproduction") + 
+xlab("understory density") + 
+theme_classic(15) +                  
+theme(legend.position = c(0.8, 0.2), legend.title = element_blank(), legend.key.size = unit(2, 'lines'))
+```
+
+9. Figure 2:
+
+```{r}
+## Calculate cor values used for vertical lines below:
+vert_lin <- r.all_rad$cor[r.all_rad$radius %in% c(78, 202, 450)]
+
+ggplot(r.all_rad, aes(x = cor, y = R2m)) +
+geom_point(size = 4) +
+scale_x_reverse() +
+geom_vline(xintercept = vert_lin, color = "black", linetype = "dashed") +
+geom_text(aes(x = vert_lin[2] + 0.025, label = "450 m", y = 0.115), angle = 0, size = 5) +
+geom_text(aes(x = vert_lin[3] + 0.021, label = "80 m", y = 0.115), angle = 0, size = 5) +
+geom_text(aes(x = vert_lin[1] + 0.025, label = "200 m", y = 0.115), angle = 0, size = 5) +
+scale_color_grey(start = 0.1, end = 0.5) + 
+scale_fill_grey(start = 0.1, end = 0.5) +
+xlab("correlation of ud at nest with ud at radius i around the nest") + 
+ylab("r-squared with ud at radius i") + 
+theme_classic(15)
+```
+
