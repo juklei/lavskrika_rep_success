@@ -7,7 +7,7 @@
 ## matters for reproductive success.
 
 ## First edit: 20180602
-## Last edit: 20181219
+## Last edit: 20191119
 
 ## Author: Julian Klein
 
@@ -56,10 +56,9 @@ vd_thresh <- function(data, indices) {
 rsq <- function(data, indices) {
   
   ddd <- data[indices, ]
-  m.T <- glmer(rep_succ ~ dts_cat * vd0t5_abs_log_c + area +
+  m.T <- glmer(rep_succ ~ dts_cat * vd0t5_abs_log_c + hab_qual + area +
                  (1|female_ring) +
                  (1|male_ring) +
-                 (1|hab_qual) +
                  (1|year),
                family = binomial,
                data = ddd,
@@ -124,42 +123,41 @@ for(i in seq(500, 3500, 50)) {
   ## Categorise dts
   D$dts_cat <- ifelse(D$dts > i, "low_ca", "high_ca")
 
-  m.dts_cat <- glmer(rep_succ ~ dts_cat +
+  m.dts_cat <- glmer(rep_succ ~ dts_cat + hab_qual +
                        (1|female_ring) +
                        (1|male_ring) +
-                       (1|hab_qual) +
                        (1|year),
                      family = binomial,  
                      data = D,
                      control = cont_spec)
   
-  ## Calculate threshold in rep_succ between high_ca and low_ca: 
-  T1 <- boot(data = D, statistic = rs_thresh, R = 1000)
+  # ## Calculate threshold in rep_succ between high_ca and low_ca: 
+  # T1 <- boot(data = D, statistic = rs_thresh, R = 1000)
 
   ## Store model output for all categorisation distances:
   r.dts_cat <- rbind(r.dts_cat, 
                      cbind(summary(m.dts_cat)$coefficients, 
+                           "neg_logLik" = summary(m.dts_cat)$logLik[1],
                            "R2m" = r.squaredGLMM(m.dts_cat)[1, 1],
                            "AIC" = AIC(m.dts_cat),
-                           summary(T1),
+                           # summary(T1),
                            "dts_cat" = i))
 
 }
 
 dir.create("results")
-write.csv(r.dts_cat, "results/dts_cat_results2.csv")
+write.csv(r.dts_cat, "results/dts_cat_results.csv")
 
 ## Test model assumptions with DHARMa for chosen dts_cat:
 
 ## Select dts_cat with lowest Estimate:
-R <- r.dts_cat[r.dts_cat[,"Estimate"] == min(r.dts_cat[,"Estimate"]), "dts_cat"]
+R <- r.dts_cat[r.dts_cat[,"AIC"] == min(r.dts_cat[,"AIC"]), "dts_cat"]
 
 D$dts_cat <- ifelse(D$dts > R, "low_ca", "high_ca")
 
-m.dts_cat <- glmer(rep_succ ~ dts_cat +
+m.dts_cat <- glmer(rep_succ ~ dts_cat + hab_qual +
                      (1|female_ring) +
                      (1|male_ring) +
-                     (1|hab_qual) +
                      (1|year),
                    family = binomial,  
                    data = D,
@@ -174,7 +172,8 @@ test_my_model(m.dts_cat)
 nest_ALS$dts_cat <- ifelse(nest_ALS$dts > R, "low_ca", "high_ca")
 
 ## Exclude NA's in data set for use in models below:
-DD <- na.omit(nest_ALS[, -which(colnames(nest_ALS) %in% c("eggs", "hatched"))])
+DD <- droplevels(na.omit(
+  nest_ALS[, -which(colnames(nest_ALS) %in% c("eggs", "hatched"))]))
 
 ## Reduce DD to D15
 
@@ -195,10 +194,9 @@ D15$height_c <- D15$height - mean(D15$height)
 
 ## 6a) Test log model with absolute veg density as a logarithmic predictor; 
 
-m.vd0t5_abs_log_c_15 <- glmer(rep_succ ~ dts_cat * vd0t5_abs_log_c +
+m.vd0t5_abs_log_c_15 <- glmer(rep_succ ~ dts_cat * vd0t5_abs_log_c + hab_qual +
                                 (1|female_ring) +
                                 (1|male_ring) +
-                                (1|hab_qual) +
                                 (1|year),
                               family = binomial,
                               data = D15,
@@ -215,30 +213,41 @@ capture.output(summary(m.vd0t5_abs_log_c_15),
 save(m.vd0t5_abs_log_c_15, file = "data/m.vd0t5_abs_log_c_15.rda")
 
 ## Export data set with prediction for figures to data:
-cbind(predict(m.vd0t5_abs_log_c_15, 
+
+newdata <- expand.grid.df(D15[, c("name", "rep_succ", "dts_cat", 
+                                  "vd0t5_abs_log_c", "vd_0to5_abs")],
+                          data.frame("hab_qual" = levels(D15$hab_qual)))
+
+## You should make a new data frame with all possible combinations and then 
+## plot only for unmanaged or managed:
+cbind(predict(m.vd0t5_abs_log_c_15,
+              newdata = newdata,
               re.form = NA, 
               se.fit = TRUE, 
               type = "response"), 
-      D15[, c("rep_succ", "dts_cat", "vd_0to5_abs")]) %>% 
-  write.csv(., "data/p.vd0t5_abs_log_c.csv", row.names = FALSE)
+      newdata) %>% write.csv(., "data/p.vd0t5_abs_log_c.csv", row.names = FALSE)
 
 ## 6b) and compare to quadratic, linear and intercep only model; 
 
 ## Only the intercept:
-m.int <- glmer(rep_succ ~ 
-                 (1|female_ring) +
-                 (1|male_ring) +
-                 (1|hab_qual) +
-                 (1|year),
+m.int <- glmer(rep_succ ~ (1|female_ring) + (1|male_ring) + (1|year),
                family = binomial,
                data = D15,
                control = cont_spec)
 
+## Only the habitat quality:
+m.hq <- glmer(rep_succ ~ hab_qual +
+                (1|female_ring) +
+                (1|male_ring) +
+                (1|year),
+              family = binomial,
+              data = D15,
+              control = cont_spec)
+
 ## Corvid activity only:
-m.dts_cat_15 <- glmer(rep_succ ~ dts_cat +
+m.dts_cat_15 <- glmer(rep_succ ~ dts_cat + hab_qual +
                         (1|female_ring) +
                         (1|male_ring) +
-                        (1|hab_qual) +
                         (1|year),
                       family = binomial,
                       data = D15,
@@ -248,10 +257,9 @@ m.dts_cat_15 <- glmer(rep_succ ~ dts_cat +
 test_my_model(m.dts_cat_15)
 
 ## With absolute veg density only as a linear predictor:
-m.vd0t5_abs_c_15_only <- glmer(rep_succ ~ vd0t5_abs_c +
+m.vd0t5_abs_c_15_only <- glmer(rep_succ ~ vd0t5_abs_c + hab_qual +
                                  (1|female_ring) +
                                  (1|male_ring) +
-                                 (1|hab_qual) +
                                  (1|year),
                                family = binomial,
                                data = D15,
@@ -261,10 +269,9 @@ m.vd0t5_abs_c_15_only <- glmer(rep_succ ~ vd0t5_abs_c +
 test_my_model(m.vd0t5_abs_c_15_only)
 
 ## With absolute veg density as a linear predictor in interaction with dts:
-m.vd0t5_abs_c_15 <- glmer(rep_succ ~ dts_cat * vd0t5_abs_c +
+m.vd0t5_abs_c_15 <- glmer(rep_succ ~ dts_cat * vd0t5_abs_c + hab_qual +
                             (1|female_ring) +
                             (1|male_ring) +
-                            (1|hab_qual) +
                             (1|year),
                           family = binomial,
                           data = D15,
@@ -275,9 +282,9 @@ test_my_model(m.vd0t5_abs_c_15)
 
 ## With absolute veg density as a quadratic predictor:
 m.vd0t5_abs_c_poly_15 <- glmer(rep_succ ~ dts_cat * poly(vd0t5_abs_c, 2) +
+                                 hab_qual +
                                  (1|female_ring) +
                                  (1|male_ring) +
-                                 (1|hab_qual) +
                                  (1|year),
                                family = binomial,
                                data = D15,
@@ -288,7 +295,8 @@ test_my_model(m.vd0t5_abs_c_15)
 
 ## List all models above in a model selection table and export results:
 model.sel(m.vd0t5_abs_log_c_15,
-          m.int, 
+          m.hq, 
+          m.int,
           m.dts_cat_15, 
           m.vd0t5_abs_c_15_only,
           m.vd0t5_abs_c_15, 
@@ -297,10 +305,9 @@ model.sel(m.vd0t5_abs_log_c_15,
 
 ## 6c) and compare vd_0to5_rel; 
 
-m.vd0t5_rel_log_c_15 <- glmer(rep_succ ~ dts_cat * vd0t5_rel_log_c +
+m.vd0t5_rel_log_c_15 <- glmer(rep_succ ~ dts_cat * vd0t5_rel_log_c + hab_qual +
                                 (1|female_ring) +
                                 (1|male_ring) +
-                                (1|hab_qual) +
                                 (1|year),
                               family = binomial,
                               data = D15,
@@ -316,10 +323,9 @@ model.sel(m.vd0t5_abs_log_c_15, m.vd0t5_rel_log_c_15) %>% capture.output(.) %>%
 ## 6d) and together with forest height in the same model:
 
 m.all_forest <- glmer(rep_succ ~ dts_cat * 
-                        (vd0t5_abs_log_c + height_c + vd5t_log_c) +
+                        (vd0t5_abs_log_c + height_c + vd5t_log_c) + hab_qual +
                         (1|female_ring) +
                         (1|male_ring) +
-                        (1|hab_qual) +
                         (1|year),
                       family = binomial,
                       na.action = "na.fail", 
@@ -343,10 +349,9 @@ for(i in seq(500, 3500, 50)) {
   ## Categorise dts
   D15$dts_cat <- ifelse(D15$dts > i, "low_ca", "high_ca")
   
-  m.sensitivity <- glmer(rep_succ ~ dts_cat * vd0t5_abs_log_c +
+  m.sensitivity <- glmer(rep_succ ~ dts_cat * vd0t5_abs_log_c + hab_qual +
                            (1|female_ring) +
                            (1|male_ring) +
-                           (1|hab_qual) +
                            (1|year),
                          family = binomial,  
                          data = D15,
@@ -362,7 +367,7 @@ for(i in seq(500, 3500, 50)) {
 }
 
 dir.create("results")
-write.csv(r.sensitivity, "results/sensitivity2.csv")
+write.csv(r.sensitivity, "results/sensitivity.csv")
 
 ## 7. Assess if a natural threshold can be identified for high corvid ----------
 ##    activity. For this we classify vd_to5_abs into two categories in steps 
@@ -380,10 +385,9 @@ for(i in seq(5, 20, 0.1)) {
   ## Categorise vd_0to5_abs
   DD_t$vd_cat <- ifelse(DD_t$vd_0to5_abs > i, "dense", "open")
   
-  m.rep_succ_t <- glmer(rep_succ ~ vd_cat +
+  m.rep_succ_t <- glmer(rep_succ ~ vd_cat + hab_qual +
                           (1|female_ring) +
                           (1|male_ring) +
-                          (1|hab_qual) +
                           (1|year),
                         family = binomial,  
                         data = DD_t,
@@ -414,10 +418,9 @@ S <- r.rep_succ_t[r.rep_succ_t[, "Estimate"] == max(r.rep_succ_t[, "Estimate"]),
 ## Categorise vd_0to5_abs
 DD_t$vd_cat <- ifelse(DD_t$vd_0to5_abs > S, "dense", "open")
 
-m.rep_succ_t <- glmer(rep_succ ~ vd_cat +
+m.rep_succ_t <- glmer(rep_succ ~ vd_cat + hab_qual +
                         (1|female_ring) +
                         (1|male_ring) +
-                        (1|hab_qual) +
                         (1|year),
                       family = binomial,  
                       data = DD_t,
@@ -459,19 +462,18 @@ for(i in unique(DD_all_rad$sample_rad)) {
     r.cor <- cor(DD_all_rad[DD_all_rad$sample_rad == i, "vd_0to5_abs"],
                  DD_all_rad[DD_all_rad$sample_rad == 15, "vd_0to5_abs"])
   
-    m.all_rad <- glmer(rep_succ ~ dts_cat * vd0t5_abs_log_c + area +
+    m.all_rad <- glmer(rep_succ ~ dts_cat * vd0t5_abs_log_c + area + hab_qual +
                          (1|female_ring) +
                          (1|male_ring) +
-                         (1|hab_qual) +
                          (1|year),
                        family = binomial,
                        data = DD_all_rad[DD_all_rad$sample_rad == i, ],
                        control = cont_spec)
  
-    ## Make bootstrapping SE's for R2:
-    T3 <- boot(data = as.data.frame(DD_all_rad[DD_all_rad$sample_rad == i, ]),
-               statistic = rsq,
-               R = 100)
+    # ## Make bootstrapping SE's for R2:
+    # T3 <- boot(data = as.data.frame(DD_all_rad[DD_all_rad$sample_rad == i, ]),
+    #            statistic = rsq,
+    #            R = 100)
   
     ## Store model output for all radiuses:
     r.all_rad <- rbind(r.all_rad, 
@@ -481,8 +483,8 @@ for(i in unique(DD_all_rad$sample_rad)) {
                              "pvalue" = summary(m.all_rad)$coefficients[5, 4],
                              "AIC" = AIC(m.all_rad), 
                              "R2m" = r.squaredGLMM(m.all_rad)[1, 1],
-                             "bootBias_R2m" = summary(T3)$bootBias,
-                             "bootSE_R2m" = summary(T3)$bootSE,
+                             # "bootBias_R2m" = summary(T3)$bootBias,
+                             # "bootSE_R2m" = summary(T3)$bootSE,
                              "radius" = i))
   
   

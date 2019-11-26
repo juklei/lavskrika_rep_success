@@ -31,39 +31,43 @@ head(D_fig3)
 
 ## 4. Produce Figure 1 showing the main results for the 15m radius -------------
 
-## Change dts_cat level names:
-levels(D_fig1$dts_cat) <- c("close to human settlement", 
-                            "far from human settlement") 
+D_fig1 <- as.data.table(D_fig1)
+D_fig1_mean <- D_fig1[, list("mean_fit" = mean(fit), "mean_se" = mean(se.fit)),
+                      by = c(colnames(D_fig1[, 3:7]))]
 
-p1 <- ggplot(D_fig1, aes(x = vd_0to5_abs, 
-                         y = rep_succ, 
-                         fill = dts_cat, 
-                         color = dts_cat))
+## Change dts_cat level names:
+levels(D_fig1_mean$dts_cat) <- c("close (<1450m) to human settlement", 
+                                 "far (>1450m) from human settlement") 
+
+p1 <- ggplot(D_fig1_mean, aes(x = vd_0to5_abs, 
+                              y = rep_succ, 
+                              fill = dts_cat, 
+                              color = dts_cat))
 p2 <- geom_jitter(size = 4, na.rm = TRUE, width = 0, height = 0.01)
-p3 <- geom_line(aes(x = vd_0to5_abs, y = fit, lty = dts_cat), size = 3)
-p4 <- geom_ribbon(aes(ymin = pmax(fit - (1*se.fit), 0), 
-                      ymax = pmin(fit + (1*se.fit), 1)),
+p3 <- geom_line(aes(x = vd_0to5_abs, y = mean_fit, lty = dts_cat), size = 3)
+p4 <- geom_ribbon(aes(ymin = pmax(mean_fit - (1*mean_se), 0), 
+                      ymax = pmin(mean_fit + (1*mean_se), 1)),
                   colour = NA, 
                   alpha = 0.1)
-p5 <- annotate("text", 10, 0.15, label = "R2m = 0.08 / R2c = 0.17", size = 10)
+p5 <- annotate("text", 10, 0.15, label = "R2m = 0.10 / R2c = 0.18", size = 10)
 
 ## Store figures:
 
 dir.create("figures")
 
-png("figures/lavskrika_F1.png", 10000/4, 7000/4, "px", res = 600/4)
+png("figures/figure1.png", 10000/4, 8000/4, "px", res = 600/4)
 
 p1 + p2 + p3 + p4 +
-  scale_color_manual(breaks = c("close to human settlement", 
-                                "far from human settlement"),
+  scale_color_manual(breaks = c("close (<1450m) to human settlement", 
+                                "far (>1450m) from human settlement"),
                      values=c("red", "blue")) + 
-  scale_fill_manual(breaks = c("close to human settlement", 
-                               "far from human settlement"),
+  scale_fill_manual(breaks = c("close (<1450m) to human settlement", 
+                               "far (>1450m) from human settlement"),
                     values=c("red", "blue")) +
   ylab("probability of succesful reproduction") + 
-  xlab("understory density") + 
+  xlab("understory density (% laser returns below 5m)") + 
   theme_classic(40) +                  
-  theme(legend.position = c(0.8, 0.2), 
+  theme(legend.position = c(0.7, 0.2), 
         legend.title = element_blank(),
         legend.key.size = unit(3, 'lines'))
 
@@ -88,23 +92,24 @@ c2c <- geom_ribbon(aes(ymax = R2m + (1.96*bootSE_R2m),
                    alpha = 0.1)
 c3 <- scale_x_reverse()
 c4a <- geom_vline(xintercept = vert_lin, color = "black", linetype = "dashed") 
-c4b <- geom_text(aes(x = vert_lin[2] + 0.025, label = "450 m", y = 0.115), 
+c4b <- geom_text(aes(x = vert_lin[2] + 0.035, label = "i = 450 m", y = 0.125), 
                  angle = 0,
                  size = 10)
-c4c <- geom_text(aes(x = vert_lin[3] + 0.021, label = "80 m", y = 0.115), 
+c4c <- geom_text(aes(x = vert_lin[3] + 0.031, label = "i = 80 m", y = 0.125), 
                  angle = 0,
                  size = 10)
-c4d <- geom_text(aes(x = vert_lin[1] + 0.025, label = "200 m", y = 0.115), 
+c4d <- geom_text(aes(x = vert_lin[1] + 0.035, label = "i = 200 m", y = 0.125), 
                  angle = 0,
                  size = 10)
+# c5 <- geom_hline(yintercept = 2, linetype = "dashed")
 
-png("figures/lavskrika_F2.png", 10000, 6000, "px", res = 600)
+png("figures/figure2.png", 10000/4, 7000/4, "px", res = 600/4)
 
 c1 + c4a + c4b + c4c + c4d + c2a + c3 +
   scale_color_grey(start = 0.1, end = 0.5) + 
   scale_fill_grey(start = 0.1, end = 0.5) +
-  xlab("correlation of ud at nest with ud at radius i around the nest") + 
-  ylab("r-squared with ud at radius i") + 
+  xlab("correlation of ud at the nest with ud within r = i around nest") + 
+  ylab(expression(paste("R"^"2", " of the model using ud within r = i"))) + 
   theme_classic(40)
 
 dev.off()

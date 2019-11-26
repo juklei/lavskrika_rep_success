@@ -4,7 +4,7 @@
 ## In this script the prediction formula used in QGIS is verified.
 ##
 ## First edit: 20181114
-## Last edit: 20181204
+## Last edit: 20191120
 ##
 ## Author: Julian Klein
 
@@ -28,10 +28,11 @@ library(Metrics)
 
 prob_success <- function(x, y) {
   
-  p <- 0.1598 + 
-    0.8465 * y + ## y = dts_low
-    0.3624 * x - ## x = centered(log(vd))
-    1.4957 * y * x
+  p <- 0.2411 + 
+    1.0427 * y + ## y = dts_low
+    0.3965 * x - ## x = centered(log(vd))
+    0.5196/2 - ## /2 for the mean between unmanaged/managed
+    1.5703 * y * x
   
   return(exp(p)/(1+exp(p)))
   
@@ -76,8 +77,11 @@ D_pred <- cbind("fit_formula" =
                                y = m.fit.data$dts_low),
                 m.fit.data)
 
-plot(D_pred$fit, D_pred$fit_formula); abline(0, 1, col = "red")
-cor(D_pred$fit, D_pred$fit_formula)
+plot(D_pred$fit_formula, D_pred$fit); abline(0, 1, col = "red")
+cor(D_pred$fit, D_pred$fit_formula) ## The dicrepancy is because the formula 
+                                    ## takes the mean of managed/unmanaged, 
+                                    ## while the model fit data has predictions 
+                                    ## once for managed and once for unmanaged. 
 
 ## 5. Manipulate the raster files and predict ns for all Arvidsjaur, Malå,
 ##    Lycksele and Åsele
@@ -188,7 +192,7 @@ lp_rank <- (lp_out_resamp - min(lp_out_resamp[], na.rm = TRUE))/
 sjo_rank <- (sj_occ - min(sj_occ[], na.rm = TRUE))/
             (max(sj_occ[], na.rm = TRUE) - min(sj_occ[], na.rm = TRUE))
 
-disag <- abs(sjo_rank - lp_rank)
+disag <- sjo_rank - lp_rank ## Use direction of difference
 
 dir.create("results")
 capture.output(
@@ -202,13 +206,42 @@ capture.output(
   print("Åsele"),
   mean(mask(disag, lp_shape[lp_shape$KnNamn == "Åsele", ])[], na.rm = TRUE)
 
-) %>% write(., "results/disagreement_83.txt")
+) %>% write(., "results/disagreement_15.txt")
 
 dir.create("temp")
-writeRaster(disag, "temp/disag_83.tif")
+writeRaster(disag, "temp/disag_15.tif")
 
 ## Compare 15 m with 83 m:
 
 cor.test(na.omit(disag15[]), na.omit(disag83[]))
+
+## Bin disagree:
+
+bdg <- rbind(expand.grid("disag" = na.omit(mask(disag, lp_shape[lp_shape$KnNamn == "Arvidsjaur", ])[]), 
+                         "county" = "Arvidsjaur"),
+             expand.grid("disag" = na.omit(mask(disag, lp_shape[lp_shape$KnNamn == "Malå", ])[]), 
+                         "county" = "Malå"),
+             expand.grid("disag" = na.omit(mask(disag, lp_shape[lp_shape$KnNamn == "Lycksele", ])[]), 
+                         "county" = "Lycksele"),
+             expand.grid("disag" = na.omit(mask(disag, lp_shape[lp_shape$KnNamn == "Åsele", ])[]), 
+                         "county" = "Åsele"))
+
+png("figures/figure_lsp_dens.png", 10000/4, 6000/4, "px", res = 600/4)
+
+ggplot(bdg) + 
+  geom_vline(xintercept = c(0.25, 0, -0.25, -0.5, -0.75), linetype = "dashed", color = "grey") +
+  # geom_histogram(aes(x = disag, color = county, fill = county, alpha = 0.5)) +
+  # geom_histogram(aes(x = disag), color = "black", fill = "white") +
+  geom_density(aes(x = disag, color = county, linetype = county), size = 2) +
+  # facet_grid(county ~ ., scales = "free_y") +
+  scale_x_continuous(breaks = c(0.25, 0, -0.25, -0.5, -0.75)) +
+  xlab("disagreement values") + ylab("") + 
+  labs(color = "counties from north to south", 
+       linetype = "counties from north to south") +
+  theme_classic(40) +
+  # theme(legend.position = "none")
+  theme(legend.position = c(0.75, 0.8), legend.key.size = unit(3, 'lines'))
+
+dev.off()
 
 ## -------------------------------END-------------------------------------------

@@ -14,6 +14,8 @@ library(MuMIn)
 library(DHARMa)
 library(ltm)
 library(ggplot2)
+library(magrittr)
+library(MASS)
 
 ## 2. Define or source functions used in this script ---------------------------
 
@@ -31,15 +33,18 @@ test_my_model <- function(m.out) {
 dir("data")
 pred <- read.csv("data/corvid_data_2005.csv")
 head(pred)
-colnames(pred)[4] <- "dts"
 
 ## 4. Plot data and build a GLM ------------------------------------------------
 
-m <- glm(Cj.preab ~ dts, data = pred, family = binomial) 
-capture.output(summary(m)) %>% write(., "results/predator.txt")
+m <- glm(cj_presence ~ dts, data = pred, family = binomial) 
+capture.output(summary(m), r.squaredGLMM(m), dose.p(m, p = 0.5)) %>% 
+  write(., "results/predator.txt")
 test_my_model(m)
 
 pred_pred <- predict(m, re.form = NA, se.fit = TRUE, type = "response")
+
+## Calculate LD50:
+LD50 <- dose.p(m, p = 0.5)
 
 ## Make a plot:
 png("figures/figure_pred.png", 10000/4, 7000/4, "px", res = 600/4)
@@ -50,11 +55,12 @@ geom_ribbon(aes(x = pred$dts,
                 ymin = pred_pred$fit - pred_pred$se.fit,
                 ymax = pred_pred$fit + pred_pred$se.fit),
             alpha = 0.2) +
-geom_jitter(aes(x = pred$dts, y = pred$Cj.preab), size = 6, height = 0.05) + 
+geom_jitter(aes(x = pred$dts, y = pred$cj_presence), size = 6, height = 0.05) + 
 scale_x_continuous(breaks = c(500, 1000, 1500, 2000, 2500)) +
-geom_vline(xintercept = 1450, linetype = "dashed") +
+geom_vline(xintercept = 1316) + geom_vline(xintercept = c(1165, 1467), 
+                                           linetype = "dashed") +
 xlab("distance of the nest to the cosest settlement") +
-ylab("probability of common jay presence") +
+ylab("probability of Eurasian jay presence") +
 theme_classic(40)
 
 dev.off()
